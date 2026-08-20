@@ -34,7 +34,6 @@ const CONFIG = {
     CLIENT_ID: "1540099644028096572", 
     GUILD_ID: "1538685893622108251",  
     
-    // 👑 Role ID Permitted to use /givefreespin
     FREE_SPIN_ADMIN_ROLE_ID: "1538910850272722997", 
 
     SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png?ex=6a88cdeb&is=6a877c6b&hm=9f964c7489d7150b992380365654f836dec100d2b76a8c2daeb0e162bb15afac&", 
@@ -88,7 +87,6 @@ if (!fs.existsSync(projectsDir)) {
     fs.mkdirSync(projectsDir);
 }
 
-// Data Helper Functions for Local Storage
 function getFreeSpinsData() {
     if (!fs.existsSync(spinsFilePath)) {
         fs.writeFileSync(spinsFilePath, JSON.stringify({}));
@@ -100,16 +98,53 @@ function saveFreeSpinsData(data) {
     fs.writeFileSync(spinsFilePath, JSON.stringify(data, null, 2));
 }
 
-// Helper to check if a channel is inside a ticket category
 function getTicketTypeByChannel(channel) {
     if (!channel || !channel.parentId) return null;
     return Object.values(CONFIG.TICKETS).find(t => t.categoryId === channel.parentId);
+}
+
+// Clean expired spins
+function cleanExpiredSpins() {
+    const spinsData = getFreeSpinsData();
+    const now = Date.now();
+    let updated = false;
+
+    for (const userId in spinsData) {
+        if (spinsData[userId].expiresAt && spinsData[userId].expiresAt < now) {
+            delete spinsData[userId];
+            updated = true;
+        }
+    }
+
+    if (updated) {
+        saveFreeSpinsData(spinsData);
+    }
+}
+
+// Check every 1 minute for expired spins
+setInterval(cleanExpiredSpins, 60000);
+
+// Helper function to read recursive txt files if folder is nested
+function getAllTxtFiles(dirPath, arrayOfFiles = []) {
+    const files = fs.readdirSync(dirPath);
+
+    files.forEach(file => {
+        const fullPath = path.join(dirPath, file);
+        if (fs.statSync(fullPath).isDirectory()) {
+            arrayOfFiles = getAllTxtFiles(fullPath, arrayOfFiles);
+        } else if (file.endsWith('.txt')) {
+            arrayOfFiles.push(fullPath);
+        }
+    });
+
+    return arrayOfFiles;
 }
 
 // ==================== READY EVENT & SLASH COMMANDS ====================
 
 client.once('ready', async () => {
     console.log(`🤖 Bot Ready! Logged in as ${client.user.tag}`);
+    cleanExpiredSpins();
     
     for (const [guildId, guild] of client.guilds.cache) {
         try {
@@ -130,7 +165,7 @@ client.once('ready', async () => {
             .setDescription('Spin to get a random project (Requires free spins or enough invites)'),
         new SlashCommandBuilder()
             .setName('givefreespin')
-            .setDescription('Give free spins to a specific user (Allowed Roles only)')
+            .setDescription('Give free spins to a specific user with expiration duration')
             .addUserOption(option => 
                 option.setName('user')
                     .setDescription('The user to give free spins to')
@@ -138,6 +173,10 @@ client.once('ready', async () => {
             .addIntegerOption(option => 
                 option.setName('amount')
                     .setDescription('Amount of free spins')
+                    .setRequired(true))
+            .addNumberOption(option => 
+                option.setName('hours')
+                    .setDescription('Expiration time in hours (e.g. 1.5 for 1 hour 30 mins)')
                     .setRequired(true))
     ];
 
@@ -168,24 +207,22 @@ client.on('guildMemberAdd', async member => {
     }
 });
 
-// ==================== PREFIX COMMANDS ($close, $claim, $rename) ====================
+// ==================== PREFIX COMMANDS ====================
 
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
 
     const ticketConfig = getTicketTypeByChannel(message.channel);
-    if (!ticketConfig) return; // Ignore messages outside ticket channels
+    if (!ticketConfig) return;
 
     const args = message.content.trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
-    // 1. $close
     if (command === '$close') {
         await message.reply("🔒 Had ticket ghadi tsdd f 5 seconds...");
         setTimeout(() => message.channel.delete().catch(() => {}), 5000);
     }
 
-    // 2. $claim
     if (command === '$claim') {
         const hasStaffRole = message.member.roles.cache.has(ticketConfig.roleId);
         if (!hasStaffRole && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
@@ -198,7 +235,6 @@ client.on('messageCreate', async message => {
         return message.reply(`✅ Had ticket t-claimat b nja7 mn طرف **<@${message.author.id}>**! Channel name wlat: \`${newName}\``);
     }
 
-    // 3. $rename <new-name>
     if (command === '$rename') {
         const newName = args.join('-');
         if (!newName) {
@@ -214,10 +250,8 @@ client.on('messageCreate', async message => {
 
 client.on('interactionCreate', async interaction => {
     
-    // Slash Commands Handling
     if (interaction.isChatInputCommand()) {
         
-        // Setup Ticket Command
         if (interaction.commandName === 'setup-ticket') {
             if (interaction.channelId !== CONFIG.SETUP_CHANNEL_ID) {
                 return interaction.reply({ content: `❌ Had command t9dr ddirha ghir f <#${CONFIG.SETUP_CHANNEL_ID}>!`, ephemeral: true });
@@ -249,7 +283,6 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: "✅ Ticket Panel sent successfully!", ephemeral: true });
         }
 
-        // Give Free Spin Command
         if (interaction.commandName === 'givefreespin') {
             const hasRole = interaction.member.roles.cache.has(CONFIG.FREE_SPIN_ADMIN_ROLE_ID);
             if (!hasRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
@@ -258,33 +291,51 @@ client.on('interactionCreate', async interaction => {
 
             const targetUser = interaction.options.getUser('user');
             const amount = interaction.options.getInteger('amount');
+            const hours = interaction.options.getNumber('hours');
 
-            if (amount <= 0) {
-                return interaction.reply({ content: "❌ Amount khasskon akbar mn 0!", ephemeral: true });
+            if (amount <= 0 || hours <= 0) {
+                return interaction.reply({ content: "❌ Amount w Hours khasshom ikounou akbar mn 0!", ephemeral: true });
             }
 
+            cleanExpiredSpins();
             const spinsData = getFreeSpinsData();
-            spinsData[targetUser.id] = (spinsData[targetUser.id] || 0) + amount;
+            
+            const expiresAt = Date.now() + (hours * 60 * 60 * 1000);
+            const currentAmount = spinsData[targetUser.id] ? spinsData[targetUser.id].amount : 0;
+
+            spinsData[targetUser.id] = {
+                amount: currentAmount + amount,
+                expiresAt: expiresAt
+            };
+
             saveFreeSpinsData(spinsData);
 
             return interaction.reply({ 
-                content: `✅ T3tat **${amount}** Free Spin(s) l <@${targetUser.id}>! Daba 3ndo **${spinsData[targetUser.id]}** Free Spin(s).` 
+                content: `✅ T3tat **${amount}** Free Spin(s) l <@${targetUser.id}>!\n⏱️ Ghadi ysaliw f **${hours}** sa3a (Ila madarch \`/spin\`, ghadi imchiw).` 
             });
         }
 
-        // Spin Command
         if (interaction.commandName === 'spin') {
             const channelCategory = interaction.channel.parentId;
             if (channelCategory !== CONFIG.TICKETS.spin.categoryId) {
                 return interaction.reply({ content: "❌ Command `/spin` t9dr tst3mlha ghir f ticket dial Spin Wheel!", ephemeral: true });
             }
 
+            cleanExpiredSpins();
             const spinsData = getFreeSpinsData();
-            const userFreeSpins = spinsData[interaction.user.id] || 0;
+            const userSpinInfo = spinsData[interaction.user.id];
+            
             let usedFreeSpin = false;
+            let remainingSpins = 0;
 
-            if (userFreeSpins > 0) {
-                spinsData[interaction.user.id] -= 1;
+            if (userSpinInfo && userSpinInfo.amount > 0) {
+                userSpinInfo.amount -= 1;
+                remainingSpins = userSpinInfo.amount;
+                if (userSpinInfo.amount <= 0) {
+                    delete spinsData[interaction.user.id];
+                } else {
+                    spinsData[interaction.user.id] = userSpinInfo;
+                }
                 saveFreeSpinsData(spinsData);
                 usedFreeSpin = true;
             } else {
@@ -295,32 +346,47 @@ client.on('interactionCreate', async interaction => {
 
                 if (totalInvites < CONFIG.INVITES_REQUIRED) {
                     return interaction.reply({ 
-                        content: `❌ Ma-3ndksh Free Spins w khassk **${CONFIG.INVITES_REQUIRED}** invites ha9i9iyin! Nta 3ndk **${totalInvites}** invites.`, 
+                        content: `❌ Ma-3ndksh Free Spins w khassk **${CONFIG.INVITES_REQUIRED}** invites! Nta 3ndk **${totalInvites}** invites.`, 
                         ephemeral: true 
                     });
                 }
             }
 
-            const files = fs.readdirSync(projectsDir).filter(f => f.endsWith('.txt'));
-            if (files.length === 0) {
+            const allFiles = getAllTxtFiles(projectsDir);
+            if (allFiles.length === 0) {
                 return interaction.reply({ content: "❌ Ulac project files f folder dial projects حاليا.", ephemeral: true });
             }
 
-            const randomFile = files[Math.floor(Math.random() * files.length)];
-            const filePath = path.join(projectsDir, randomFile);
+            const randomFilePath = allFiles[Math.floor(Math.random() * allFiles.length)];
+            const fileName = path.basename(randomFilePath);
 
             const spinTypeMsg = usedFreeSpin 
-                ? `🎟️ *(St3malti 1 Free Spin, ba9i lik: **${spinsData[interaction.user.id]}**)*`
+                ? `🎟️ *(St3malti 1 Free Spin, ba9i lik: **${remainingSpins}**)*`
                 : `📊 *(St3malti l-invites dialk)*`;
 
-            await interaction.reply({ 
-                content: `🎉 **Mabrouk!** Ha huwa l-project dialk li jtik f l-Spin Wheel (${randomFile}):\n${spinTypeMsg}`,
-                files: [filePath]
-            });
+            const msgText = `🎉 **Mabrouk!** Ha huwa l-project dialk li jtik f l-Spin Wheel (**${fileName}**):\n${spinTypeMsg}`;
+
+            // Try to send to DM first
+            try {
+                await interaction.user.send({
+                    content: msgText,
+                    files: [randomFilePath]
+                });
+
+                return interaction.reply({
+                    content: `📥 **Sftna lik l-project f Private (DM)!** Check l-messages dialk.\n${spinTypeMsg}`
+                });
+
+            } catch (err) {
+                // If DM is closed, send directly in the ticket
+                return interaction.reply({ 
+                    content: `⚠️ **DM dialk msdud!** Ha huwa l-project dialk hna f-l-ticket:\n\n${msgText}`,
+                    files: [randomFilePath]
+                });
+            }
         }
     }
 
-    // Modal Submission (Rename Ticket via Button)
     if (interaction.isModalSubmit()) {
         if (interaction.customId === 'modal_rename_ticket') {
             const newName = interaction.fields.getTextInputValue('input_ticket_name');
@@ -329,10 +395,8 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // Buttons Execution
     if (interaction.isButton()) {
         
-        // Ticket Action Buttons Inside Open Tickets
         if (interaction.customId === 'ticket_close') {
             await interaction.reply({ content: "🔒 Had ticket ghadi tsdd f 5 seconds..." });
             setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
@@ -372,7 +436,6 @@ client.on('interactionCreate', async interaction => {
             return interaction.showModal(modal);
         }
 
-        // Panel Creation Buttons
         const typeMap = {
             'btn_pub': CONFIG.TICKETS.pub,
             'btn_bugs': CONFIG.TICKETS.bugs,
@@ -419,7 +482,6 @@ client.on('interactionCreate', async interaction => {
             embedMsg.addFields({ name: "🎰 Spin Instructions", value: "Ila 3ndk Free Spins aw 6 invites, ktab `/spin` hna باش takhod project dialk!" });
         }
 
-        // Action controls inside the created ticket
         const ticketControlRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('ticket_close').setLabel('Close').setEmoji('<:delete:1540129242107346984>').setStyle(ButtonStyle.Danger),
             new ButtonBuilder().setCustomId('ticket_claim').setLabel('Claim').setEmoji('<:claim:1540129878916210738>').setStyle(ButtonStyle.Success),
