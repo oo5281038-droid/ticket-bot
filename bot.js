@@ -219,30 +219,30 @@ client.on('messageCreate', async message => {
     const command = args.shift().toLowerCase();
 
     if (command === '$close') {
-        await message.reply("🔒 Had ticket ghadi tsdd f 5 seconds...");
+        await message.reply("🔒 This ticket will be closed in 5 seconds...");
         setTimeout(() => message.channel.delete().catch(() => {}), 5000);
     }
 
     if (command === '$claim') {
         const hasStaffRole = message.member.roles.cache.has(ticketConfig.roleId);
         if (!hasStaffRole && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply("❌ Ghir l-staff dial had category li y9dr y-claimi ticket!");
+            return message.reply("❌ Only staff members for this category can claim this ticket!");
         }
 
         const newName = `claimed-by-${message.author.username}`;
         await message.channel.setName(newName);
 
-        return message.reply(`✅ Had ticket t-claimat b nja7 mn طرف **<@${message.author.id}>**! Channel name wlat: \`${newName}\``);
+        return message.reply(`✅ Ticket successfully claimed by **<@${message.author.id}>**! Channel renamed to: \`${newName}\``);
     }
 
     if (command === '$rename') {
         const newName = args.join('-');
         if (!newName) {
-            return message.reply("❌ Khassk taktab smya l-jadida! M3al: `$rename my-new-ticket`");
+            return message.reply("❌ Please provide a new name! Example: `$rename my-new-ticket`");
         }
 
         await message.channel.setName(newName);
-        return message.reply(`✏️ Had ticket tbdlat smيتها l: \`${newName}\``);
+        return message.reply(`✏️ Ticket renamed to: \`${newName}\``);
     }
 });
 
@@ -254,7 +254,7 @@ client.on('interactionCreate', async interaction => {
         
         if (interaction.commandName === 'setup-ticket') {
             if (interaction.channelId !== CONFIG.SETUP_CHANNEL_ID) {
-                return interaction.reply({ content: `❌ Had command t9dr ddirha ghir f <#${CONFIG.SETUP_CHANNEL_ID}>!`, ephemeral: true });
+                return interaction.reply({ content: `❌ You can only use this command in <#${CONFIG.SETUP_CHANNEL_ID}>!`, ephemeral: true });
             }
 
             const ticketEmbed = new EmbedBuilder()
@@ -286,7 +286,7 @@ client.on('interactionCreate', async interaction => {
         if (interaction.commandName === 'givefreespin') {
             const hasRole = interaction.member.roles.cache.has(CONFIG.FREE_SPIN_ADMIN_ROLE_ID);
             if (!hasRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                return interaction.reply({ content: "❌ Ma-3ndksh permission/role باش tst3ml had command!", ephemeral: true });
+                return interaction.reply({ content: "❌ You don't have permission to use this command!", ephemeral: true });
             }
 
             const targetUser = interaction.options.getUser('user');
@@ -294,7 +294,7 @@ client.on('interactionCreate', async interaction => {
             const hours = interaction.options.getNumber('hours');
 
             if (amount <= 0 || hours <= 0) {
-                return interaction.reply({ content: "❌ Amount w Hours khasshom ikounou akbar mn 0!", ephemeral: true });
+                return interaction.reply({ content: "❌ Amount and Hours must be greater than 0!", ephemeral: true });
             }
 
             cleanExpiredSpins();
@@ -311,14 +311,14 @@ client.on('interactionCreate', async interaction => {
             saveFreeSpinsData(spinsData);
 
             return interaction.reply({ 
-                content: `✅ T3tat **${amount}** Free Spin(s) l <@${targetUser.id}>!\n⏱️ Ghadi ysaliw f **${hours}** sa3a (Ila madarch \`/spin\`, ghadi imchiw).` 
+                content: `✅ Granted **${amount}** Free Spin(s) to <@${targetUser.id}>!\n⏱️ Expires in **${hours}** hour(s) (If unused, they will be removed).` 
             });
         }
 
         if (interaction.commandName === 'spin') {
             const channelCategory = interaction.channel.parentId;
             if (channelCategory !== CONFIG.TICKETS.spin.categoryId) {
-                return interaction.reply({ content: "❌ Command `/spin` t9dr tst3mlha ghir f ticket dial Spin Wheel!", ephemeral: true });
+                return interaction.reply({ content: "❌ You can only use the `/spin` command inside a Spin Wheel ticket!", ephemeral: true });
             }
 
             cleanExpiredSpins();
@@ -346,7 +346,7 @@ client.on('interactionCreate', async interaction => {
 
                 if (totalInvites < CONFIG.INVITES_REQUIRED) {
                     return interaction.reply({ 
-                        content: `❌ Ma-3ndksh Free Spins w khassk **${CONFIG.INVITES_REQUIRED}** invites! Nta 3ndk **${totalInvites}** invites.`, 
+                        content: `❌ You have no Free Spins left and need **${CONFIG.INVITES_REQUIRED}** invites! You currently have **${totalInvites}** invites.`, 
                         ephemeral: true 
                     });
                 }
@@ -354,17 +354,17 @@ client.on('interactionCreate', async interaction => {
 
             const allFiles = getAllTxtFiles(projectsDir);
             if (allFiles.length === 0) {
-                return interaction.reply({ content: "❌ Ulac project files f folder dial projects حاليا.", ephemeral: true });
+                return interaction.reply({ content: "❌ No project files found in the projects folder currently.", ephemeral: true });
             }
 
             const randomFilePath = allFiles[Math.floor(Math.random() * allFiles.length)];
             const fileName = path.basename(randomFilePath);
 
             const spinTypeMsg = usedFreeSpin 
-                ? `🎟️ *(St3malti 1 Free Spin, ba9i lik: **${remainingSpins}**)*`
-                : `📊 *(St3malti l-invites dialk)*`;
+                ? `🎟️ *(Used 1 Free Spin, remaining: **${remainingSpins}**)*`
+                : `📊 *(Used your server invites)*`;
 
-            const msgText = `🎉 **Mabrouk!** Ha huwa l-project dialk li jtik f l-Spin Wheel (**${fileName}**):\n${spinTypeMsg}`;
+            const msgText = `🎉 **Congratulations!** Here is your project from the Spin Wheel (**${fileName}**):\n${spinTypeMsg}`;
 
             // Try to send to DM first
             try {
@@ -374,13 +374,13 @@ client.on('interactionCreate', async interaction => {
                 });
 
                 return interaction.reply({
-                    content: `📥 **Sftna lik l-project f Private (DM)!** Check l-messages dialk.\n${spinTypeMsg}`
+                    content: `📥 **We sent your project via Direct Message (DM)!** Please check your messages.\n${spinTypeMsg}`
                 });
 
             } catch (err) {
                 // If DM is closed, send directly in the ticket
                 return interaction.reply({ 
-                    content: `⚠️ **DM dialk msdud!** Ha huwa l-project dialk hna f-l-ticket:\n\n${msgText}`,
+                    content: `⚠️ **Your DMs are closed!** Here is your project directly in the ticket:\n\n${msgText}`,
                     files: [randomFilePath]
                 });
             }
@@ -391,14 +391,14 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId === 'modal_rename_ticket') {
             const newName = interaction.fields.getTextInputValue('input_ticket_name');
             await interaction.channel.setName(newName);
-            return interaction.reply({ content: `✏️ Had ticket tbdlat smيتها l: \`${newName}\`` });
+            return interaction.reply({ content: `✏️ Ticket renamed to: \`${newName}\`` });
         }
     }
 
     if (interaction.isButton()) {
         
         if (interaction.customId === 'ticket_close') {
-            await interaction.reply({ content: "🔒 Had ticket ghadi tsdd f 5 seconds..." });
+            await interaction.reply({ content: "🔒 This ticket will be closed in 5 seconds..." });
             setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
             return;
         }
@@ -408,14 +408,14 @@ client.on('interactionCreate', async interaction => {
             if (ticketConfig) {
                 const hasStaffRole = interaction.member.roles.cache.has(ticketConfig.roleId);
                 if (!hasStaffRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                    return interaction.reply({ content: "❌ Ghir l-staff dial had category li y9dr y-claimi ticket!", ephemeral: true });
+                    return interaction.reply({ content: "❌ Only staff members for this category can claim this ticket!", ephemeral: true });
                 }
             }
 
             const newName = `claimed-by-${interaction.user.username}`;
             await interaction.channel.setName(newName);
 
-            return interaction.reply({ content: `✅ Had ticket t-claimat b nja7 mn طرف **<@${interaction.user.id}>**! Channel name wlat: \`${newName}\`` });
+            return interaction.reply({ content: `✅ Ticket successfully claimed by **<@${interaction.user.id}>**! Channel renamed to: \`${newName}\`` });
         }
 
         if (interaction.customId === 'ticket_rename') {
@@ -449,7 +449,7 @@ client.on('interactionCreate', async interaction => {
 
         const category = interaction.guild.channels.cache.get(selectedTicket.categoryId);
         if (!category) {
-            return interaction.reply({ content: "❌ Category dial had ticket makhddamach! Check IDs f CONFIG.", ephemeral: true });
+            return interaction.reply({ content: "❌ Invalid ticket category! Please check IDs in CONFIG.", ephemeral: true });
         }
 
         const ticketChannel = await interaction.guild.channels.create({
@@ -475,11 +475,11 @@ client.on('interactionCreate', async interaction => {
         const embedMsg = new EmbedBuilder()
             .setColor("#2b2d31")
             .setTitle(`${selectedTicket.emoji} Ticket: ${selectedTicket.name}`)
-            .setDescription(`Marhaba <@${interaction.user.id}>! L-staff <@&${selectedTicket.roleId}> ghadi yjawbouk f 9reb wa9t.`)
+            .setDescription(`Welcome <@${interaction.user.id}>! <@&${selectedTicket.roleId}> staff will assist you shortly.`)
             .setThumbnail(client.user.displayAvatarURL());
 
         if (interaction.customId === 'btn_spin') {
-            embedMsg.addFields({ name: "🎰 Spin Instructions", value: "Ila 3ndk Free Spins aw 6 invites, ktab `/spin` hna باش takhod project dialk!" });
+            embedMsg.addFields({ name: "🎰 Spin Instructions", value: "If you have Free Spins or 6 invites, type `/spin` here to get your project!" });
         }
 
         const ticketControlRow = new ActionRowBuilder().addComponents(
@@ -494,7 +494,7 @@ client.on('interactionCreate', async interaction => {
             components: [ticketControlRow]
         });
 
-        return interaction.reply({ content: `✅ Ticket dialk tft7at hna: ${ticketChannel}`, ephemeral: true });
+        return interaction.reply({ content: `✅ Your ticket has been opened here: ${ticketChannel}`, ephemeral: true });
     }
 });
 
