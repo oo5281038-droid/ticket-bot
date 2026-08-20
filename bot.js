@@ -30,13 +30,13 @@ const CONFIG = {
     TOKEN: process.env.TOKEN, 
     
     // Server & Bot IDs
-    CLIENT_ID: "YOUR_BOT_CLIENT_ID", // ID dial Bot
-    GUILD_ID: "YOUR_GUILD_ID",       // ID dial Server
+    CLIENT_ID: "1540099644028096572", // ID dial Bot
+    GUILD_ID: "1539018163021287466",       // ID dial Server
     
     // Customization & Links
-    SERVER_BANNER: "https://i.imgur.com/your-banner.png", // Link dial Banner
-    SETUP_CHANNEL_ID: "123456789012345678", // Channel fin msmouh /setup-ticket
-    WELCOME_CHANNEL_ID: "123456789012345678", // Channel dial Welcome
+    SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png?ex=6a88cdeb&is=6a877c6b&hm=9f964c7489d7150b992380365654f836dec100d2b76a8c2daeb0e162bb15afac&", // Link dial Banner
+    SETUP_CHANNEL_ID: "1540122105713131630", // Channel fin msmouh /setup-ticket
+    WELCOME_CHANNEL_ID: "1540122188256911410", // Channel dial Welcome
     INVITES_REQUIRED: 6, // 3dad l-invites required for /spin
 
     // Categories & Staff Roles IDs for each Ticket
