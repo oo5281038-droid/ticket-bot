@@ -31,55 +31,70 @@ const CONFIG = {
     CLIENT_ID: "1540099644028096572", 
     GUILD_ID: "1538685893622108251",  
     
+    // 👑 Role ID Permitted to use /givefreespin
+    FREE_SPIN_ADMIN_ROLE_ID: "1538910850272722997", 
+
     SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png?ex=6a88cdeb&is=6a877c6b&hm=9f964c7489d7150b992380365654f836dec100d2b76a8c2daeb0e162bb15afac&", 
     SETUP_CHANNEL_ID: "1538901953331986594", 
     INVITES_REQUIRED: 6, 
 
-    // 🔴 HNA KHASSK T-BDDEL L-IDs DIAL CATEGORY W ROLES:
     TICKETS: {
         pub: {
             name: "Pub",
             label: "Pub",
-            emoji: "🛡️",
-            categoryId: "1540123963043086417", // 👈 ID dial Category Pub
-            roleId: "1540124358771605565"      // 👈 ID dial Role Staff Pub
+            emoji: "<:kndpub:1540126362658938940>",
+            categoryId: "1540123963043086417",
+            roleId: "1540124358771605565"
         },
         bugs: {
             name: "Bugs",
             label: "Bugs",
-            emoji: "🔑",
-            categoryId: "1540123985860239472", // 👈 ID dial Category Bugs
-            roleId: "1540124504406098071"    // 👈 ID dial Role Staff Bugs
+            emoji: "<a:emoji:1540126667815526451>",
+            categoryId: "1540123985860239472",
+            roleId: "1540124504406098071"
         },
         donate: {
             name: "Donate",
             label: "Donate",
-            emoji: "💵",
-            categoryId: "1540123940700299374", // 👈 ID dial Category Donate
-            roleId: "1540124475503280229"    // 👈 ID dial Role Staff Donate
+            emoji: "<:mny:1540091412719210637>",
+            categoryId: "1540123940700299374",
+            roleId: "1540124475503280229"
         },
         remplacement: {
             name: "Remplacement",
             label: "Remplacement",
-            emoji: "🔨",
-            categoryId: "1540123905480462456", // 👈 ID dial Category Remplacement
-            roleId: "1540124434772533308"    // 👈 ID dial Role Staff Remplacement
+            emoji: "<a:work1:1540127049132286022>",
+            categoryId: "1540123905480462456",
+            roleId: "1540124434772533308"
         },
         spin: {
             name: "Spin Wheel",
             label: "Spin Wheel",
-            emoji: "🎰",
-            categoryId: "1540124005137121370", // 👈 ID dial Category Spin Wheel
-            roleId: "1540124575042637955"    // 👈 ID dial Role Staff Spin
+            emoji: "<a:extra_7:1540127733231648808>",
+            categoryId: "1540124005137121370",
+            roleId: "1540124575042637955"
         }
     }
 };
 
 const invitesCache = new Map();
 const projectsDir = path.join(__dirname, 'projects');
+const spinsFilePath = path.join(__dirname, 'free_spins.json');
 
 if (!fs.existsSync(projectsDir)) {
     fs.mkdirSync(projectsDir);
+}
+
+// Data Helper Functions for Local Storage
+function getFreeSpinsData() {
+    if (!fs.existsSync(spinsFilePath)) {
+        fs.writeFileSync(spinsFilePath, JSON.stringify({}));
+    }
+    return JSON.parse(fs.readFileSync(spinsFilePath, 'utf8'));
+}
+
+function saveFreeSpinsData(data) {
+    fs.writeFileSync(spinsFilePath, JSON.stringify(data, null, 2));
 }
 
 // ==================== READY EVENT & SLASH COMMANDS ====================
@@ -87,7 +102,6 @@ if (!fs.existsSync(projectsDir)) {
 client.once('ready', async () => {
     console.log(`🤖 Bot Ready! Logged in as ${client.user.tag}`);
     
-    // Cache current server invites for tracking
     for (const [guildId, guild] of client.guilds.cache) {
         try {
             const firstInvites = await guild.invites.fetch();
@@ -104,7 +118,18 @@ client.once('ready', async () => {
             .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
         new SlashCommandBuilder()
             .setName('spin')
-            .setDescription('Spin to get a random project (Requires enough invites)')
+            .setDescription('Spin to get a random project (Requires free spins or enough invites)'),
+        new SlashCommandBuilder()
+            .setName('givefreespin')
+            .setDescription('Give free spins to a specific user (Allowed Roles only)')
+            .addUserOption(option => 
+                option.setName('user')
+                    .setDescription('The user to give free spins to')
+                    .setRequired(true))
+            .addIntegerOption(option => 
+                option.setName('amount')
+                    .setDescription('Amount of free spins')
+                    .setRequired(true))
     ];
 
     const rest = new REST({ version: '10' }).setToken(CONFIG.TOKEN);
@@ -119,14 +144,12 @@ client.once('ready', async () => {
     }
 });
 
-// Update Invites Cache on new invite creation
 client.on('inviteCreate', invite => {
     const guildInvites = invitesCache.get(invite.guild.id) || new Map();
     guildInvites.set(invite.code, invite.uses);
     invitesCache.set(invite.guild.id, guildInvites);
 });
 
-// Cache invites when member joins
 client.on('guildMemberAdd', async member => {
     try {
         const newInvites = await member.guild.invites.fetch();
@@ -139,8 +162,9 @@ client.on('guildMemberAdd', async member => {
 // ==================== INTERACTION HANDLING ====================
 
 client.on('interactionCreate', async interaction => {
-    // 1. Slash Commands
     if (interaction.isChatInputCommand()) {
+        
+        // 1. Setup Ticket Command
         if (interaction.commandName === 'setup-ticket') {
             if (interaction.channelId !== CONFIG.SETUP_CHANNEL_ID) {
                 return interaction.reply({ content: `❌ Had command t9dr ddirha ghir f <#${CONFIG.SETUP_CHANNEL_ID}>!`, ephemeral: true });
@@ -172,22 +196,56 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: "✅ Ticket Panel sent successfully!", ephemeral: true });
         }
 
+        // 2. Give Free Spin Command
+        if (interaction.commandName === 'givefreespin') {
+            const hasRole = interaction.member.roles.cache.has(CONFIG.FREE_SPIN_ADMIN_ROLE_ID);
+            if (!hasRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                return interaction.reply({ content: "❌ Ma-3ndksh permission/role باش tst3ml had command!", ephemeral: true });
+            }
+
+            const targetUser = interaction.options.getUser('user');
+            const amount = interaction.options.getInteger('amount');
+
+            if (amount <= 0) {
+                return interaction.reply({ content: "❌ Amount khasskon akbar mn 0!", ephemeral: true });
+            }
+
+            const spinsData = getFreeSpinsData();
+            spinsData[targetUser.id] = (spinsData[targetUser.id] || 0) + amount;
+            saveFreeSpinsData(spinsData);
+
+            return interaction.reply({ 
+                content: `✅ T3tat **${amount}** Free Spin(s) l <@${targetUser.id}>! Daba 3ndo **${spinsData[targetUser.id]}** Free Spin(s).` 
+            });
+        }
+
+        // 3. Spin Command
         if (interaction.commandName === 'spin') {
             const channelCategory = interaction.channel.parentId;
             if (channelCategory !== CONFIG.TICKETS.spin.categoryId) {
                 return interaction.reply({ content: "❌ Command `/spin` t9dr tst3mlha ghir f ticket dial Spin Wheel!", ephemeral: true });
             }
 
-            const invites = await interaction.guild.invites.fetch();
-            const userInvites = invites.filter(i => i.inviter && i.inviter.id === interaction.user.id);
-            let totalInvites = 0;
-            userInvites.forEach(inv => totalInvites += inv.uses);
+            const spinsData = getFreeSpinsData();
+            const userFreeSpins = spinsData[interaction.user.id] || 0;
+            let usedFreeSpin = false;
 
-            if (totalInvites < CONFIG.INVITES_REQUIRED) {
-                return interaction.reply({ 
-                    content: `❌ Khassk **${CONFIG.INVITES_REQUIRED}** invites ha9i9iyin bach ddir spin! Nta 3ndk **${totalInvites}** invites f9at.`, 
-                    ephemeral: true 
-                });
+            if (userFreeSpins > 0) {
+                spinsData[interaction.user.id] -= 1;
+                saveFreeSpinsData(spinsData);
+                usedFreeSpin = true;
+            } else {
+                const invites = await interaction.guild.invites.fetch();
+                const userInvites = invites.filter(i => i.inviter && i.inviter.id === interaction.user.id);
+                let totalInvites = 0;
+                userInvites.forEach(inv => totalInvites += inv.uses);
+
+                if (totalInvites < CONFIG.INVITES_REQUIRED) {
+                    return interaction.reply({ 
+                        content: `❌ Ma-3ndksh Free Spins w khassk **${CONFIG.INVITES_REQUIRED}** invites ha9i9iyin! Nta 3ndk **${totalInvites}** invites.`, 
+                        ephemeral: true 
+                    });
+                }
             }
 
             const files = fs.readdirSync(projectsDir).filter(f => f.endsWith('.txt'));
@@ -198,14 +256,18 @@ client.on('interactionCreate', async interaction => {
             const randomFile = files[Math.floor(Math.random() * files.length)];
             const filePath = path.join(projectsDir, randomFile);
 
+            const spinTypeMsg = usedFreeSpin 
+                ? `🎟️ *(St3malti 1 Free Spin, ba9i lik: **${spinsData[interaction.user.id]}**)*`
+                : `📊 *(St3malti l-invites dialk)*`;
+
             await interaction.reply({ 
-                content: `🎉 **Mabrouk!** Ha huwa l-project dialk li jtik f l-Spin Wheel (${randomFile}):`,
+                content: `🎉 **Mabrouk!** Ha huwa l-project dialk li jtik f l-Spin Wheel (${randomFile}):\n${spinTypeMsg}`,
                 files: [filePath]
             });
         }
     }
 
-    // 2. Ticket Buttons Execution
+    // Buttons Execution
     if (interaction.isButton()) {
         const typeMap = {
             'btn_pub': CONFIG.TICKETS.pub,
@@ -250,7 +312,7 @@ client.on('interactionCreate', async interaction => {
             .setThumbnail(client.user.displayAvatarURL());
 
         if (interaction.customId === 'btn_spin') {
-            embedMsg.addFields({ name: "🎰 Spin Instructions", value: "Ila 3ndk 6 invites awktar, ktab `/spin` hna bach takhod project dialk!" });
+            embedMsg.addFields({ name: "🎰 Spin Instructions", value: "Ila 3ndk Free Spins aw 6 invites, ktab `/spin` hna باش takhod project dialk!" });
         }
 
         await ticketChannel.send({ content: `<@${interaction.user.id}> | <@&${selectedTicket.roleId}>`, embeds: [embedMsg] });
