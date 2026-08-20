@@ -12,7 +12,8 @@ const {
     Routes,
     ModalBuilder,
     TextInputBuilder,
-    TextInputStyle
+    TextInputStyle,
+    ActivityType
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -40,39 +41,69 @@ const CONFIG = {
     SETUP_CHANNEL_ID: "1538901953331986594", 
     INVITES_REQUIRED: 6, 
 
+    // Streamer Mode / Streaming Status Config
+    STREAMING: {
+        NAME: "Discord.gg/Octopus-s",
+        URL: "https://www.twitch.tv/discord" 
+    },
+
+    // ALL EMOJIS ARE CENTRALIZED HERE FOR EASY EDITING
+    EMOJIS: {
+        // Custom Emojis
+        PUB: "<:kndpub:1540126362658938940>",
+        BUGS: "<a:emoji:1540126667815526451>",
+        DONATE: "<:mny:1540091412719210637>",
+        REMPLACEMENT: "<a:work1:1540127049132286022>",
+        SPIN: "<a:extra_7:1540127733231648808>",
+        DELETE: "<:delete:1540129242107346984>",
+        CLAIM: "<:claim:1540129878916210738>",
+        RENAME: "<:emoji_164:1539801927955648552>",
+
+        // Standard / System Emojis
+        BOT_READY: "🤖",
+        SUCCESS: "✅",
+        ERROR: "❌",
+        LOCK: "🔒",
+        SWORD: "⚔️",
+        FLOWER_SPARK: "🌸⚡",
+        TIMER: "⏱️",
+        FREE_SPIN_TICKET: "🎟️",
+        STATS: "📊",
+        CONGRATS: "🎉",
+        INBOX: "📥",
+        WARNING: "⚠️",
+        PENCIL: "✏️",
+        SLOT_MACHINE: "🎰"
+    },
+
     TICKETS: {
         pub: {
             name: "Pub",
             label: "Pub",
-            emoji: "<:kndpub:1540126362658938940>",
             categoryId: "1540123963043086417",
             roleId: "1540124358771605565"
         },
         bugs: {
             name: "Bugs",
             label: "Bugs",
-            emoji: "<a:emoji:1540126667815526451>",
             categoryId: "1540123985860239472",
             roleId: "1540124504406098071"
         },
         donate: {
             name: "Donate",
             label: "Donate",
-            emoji: "<:mny:1540091412719210637>",
             categoryId: "1540123940700299374",
             roleId: "1540124475503280229"
         },
         remplacement: {
             name: "Remplacement",
             label: "Remplacement",
-            emoji: "<a:work1:1540127049132286022>",
             categoryId: "1540123905480462456",
             roleId: "1540124434772533308"
         },
         spin: {
             name: "Spin Wheel",
             label: "Spin Wheel",
-            emoji: "<a:extra_7:1540127733231648808>",
             categoryId: "1540124005137121370",
             roleId: "1540124575042637955"
         }
@@ -103,7 +134,6 @@ function getTicketTypeByChannel(channel) {
     return Object.values(CONFIG.TICKETS).find(t => t.categoryId === channel.parentId);
 }
 
-// Clean expired spins
 function cleanExpiredSpins() {
     const spinsData = getFreeSpinsData();
     const now = Date.now();
@@ -121,10 +151,8 @@ function cleanExpiredSpins() {
     }
 }
 
-// Check every 1 minute for expired spins
 setInterval(cleanExpiredSpins, 60000);
 
-// Helper function to read recursive txt files if folder is nested
 function getAllTxtFiles(dirPath, arrayOfFiles = []) {
     const files = fs.readdirSync(dirPath);
 
@@ -143,9 +171,15 @@ function getAllTxtFiles(dirPath, arrayOfFiles = []) {
 // ==================== READY EVENT & SLASH COMMANDS ====================
 
 client.once('ready', async () => {
-    console.log(`🤖 Bot Ready! Logged in as ${client.user.tag}`);
+    console.log(`${CONFIG.EMOJIS.BOT_READY} Bot Ready! Logged in as ${client.user.tag}`);
     cleanExpiredSpins();
     
+    // Set Streaming Status (Streamer Mode)
+    client.user.setActivity(CONFIG.STREAMING.NAME, {
+        type: ActivityType.Streaming,
+        url: CONFIG.STREAMING.URL
+    });
+
     for (const [guildId, guild] of client.guilds.cache) {
         try {
             const firstInvites = await guild.invites.fetch();
@@ -186,7 +220,7 @@ client.once('ready', async () => {
             Routes.applicationGuildCommands(CONFIG.CLIENT_ID, CONFIG.GUILD_ID),
             { body: commands }
         );
-        console.log("✅ Commands registered!");
+        console.log(`${CONFIG.EMOJIS.SUCCESS} Commands registered!`);
     } catch (error) {
         console.error("Error registering slash commands:", error);
     }
@@ -219,30 +253,30 @@ client.on('messageCreate', async message => {
     const command = args.shift().toLowerCase();
 
     if (command === '$close') {
-        await message.reply("🔒 This ticket will be closed in 5 seconds...");
+        await message.reply(`${CONFIG.EMOJIS.LOCK} This ticket will be closed in 5 seconds...`);
         setTimeout(() => message.channel.delete().catch(() => {}), 5000);
     }
 
     if (command === '$claim') {
         const hasStaffRole = message.member.roles.cache.has(ticketConfig.roleId);
         if (!hasStaffRole && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply("❌ Only staff members for this category can claim this ticket!");
+            return message.reply(`${CONFIG.EMOJIS.ERROR} Only staff members for this category can claim this ticket!`);
         }
 
         const newName = `claimed-by-${message.author.username}`;
         await message.channel.setName(newName);
 
-        return message.reply(`✅ Ticket successfully claimed by **<@${message.author.id}>**! Channel renamed to: \`${newName}\``);
+        return message.reply(`${CONFIG.EMOJIS.SUCCESS} Ticket successfully claimed by **<@${message.author.id}>**! Channel renamed to: \`${newName}\``);
     }
 
     if (command === '$rename') {
         const newName = args.join('-');
         if (!newName) {
-            return message.reply("❌ Please provide a new name! Example: `$rename my-new-ticket`");
+            return message.reply(`${CONFIG.EMOJIS.ERROR} Please provide a new name! Example: \`$rename my-new-ticket\``);
         }
 
         await message.channel.setName(newName);
-        return message.reply(`✏️ Ticket renamed to: \`${newName}\``);
+        return message.reply(`${CONFIG.EMOJIS.PENCIL} Ticket renamed to: \`${newName}\``);
     }
 });
 
@@ -254,7 +288,7 @@ client.on('interactionCreate', async interaction => {
         
         if (interaction.commandName === 'setup-ticket') {
             if (interaction.channelId !== CONFIG.SETUP_CHANNEL_ID) {
-                return interaction.reply({ content: `❌ You can only use this command in <#${CONFIG.SETUP_CHANNEL_ID}>!`, ephemeral: true });
+                return interaction.reply({ content: `${CONFIG.EMOJIS.ERROR} You can only use this command in <#${CONFIG.SETUP_CHANNEL_ID}>!`, ephemeral: true });
             }
 
             const ticketEmbed = new EmbedBuilder()
@@ -262,31 +296,31 @@ client.on('interactionCreate', async interaction => {
                 .setAuthor({ name: `${interaction.guild.name} • Ticket Support System`, iconURL: client.user.displayAvatarURL() })
                 .setDescription(
                     `• Welcome to our Support & Order Center! Please select the ticket type matching your request:\n\n` +
-                    `• ${CONFIG.TICKETS.pub.emoji} **${CONFIG.TICKETS.pub.label}** : Report spam or pub ⚔️\n` +
-                    `• ${CONFIG.TICKETS.bugs.emoji} **${CONFIG.TICKETS.bugs.label}** : Report bugs or issues ⚔️\n` +
-                    `• ${CONFIG.TICKETS.remplacement.emoji} **${CONFIG.TICKETS.remplacement.label}** : Report issues or replacement ⚔️\n` +
-                    `• ${CONFIG.TICKETS.donate.emoji} **${CONFIG.TICKETS.donate.label}** : Support The Server ⚔️\n` +
-                    `• ${CONFIG.TICKETS.spin.emoji} **${CONFIG.TICKETS.spin.label}** : Open Spin Ticket ⚔️\n\n` +
-                    `• 🌸⚡ Use these modules for assistance, orders or tickets. Our team is here to help!`
+                    `• ${CONFIG.EMOJIS.PUB} **${CONFIG.TICKETS.pub.label}** : Report spam or pub ${CONFIG.EMOJIS.SWORD}\n` +
+                    `• ${CONFIG.EMOJIS.BUGS} **${CONFIG.TICKETS.bugs.label}** : Report bugs or issues ${CONFIG.EMOJIS.SWORD}\n` +
+                    `• ${CONFIG.EMOJIS.REMPLACEMENT} **${CONFIG.TICKETS.remplacement.label}** : Report issues or replacement ${CONFIG.EMOJIS.SWORD}\n` +
+                    `• ${CONFIG.EMOJIS.DONATE} **${CONFIG.TICKETS.donate.label}** : Support The Server ${CONFIG.EMOJIS.SWORD}\n` +
+                    `• ${CONFIG.EMOJIS.SPIN} **${CONFIG.TICKETS.spin.label}** : Open Spin Ticket ${CONFIG.EMOJIS.SWORD}\n\n` +
+                    `• ${CONFIG.EMOJIS.FLOWER_SPARK} Use these modules for assistance, orders or tickets. Our team is here to help!`
                 )
                 .setImage(CONFIG.SERVER_BANNER);
 
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('btn_pub').setLabel(CONFIG.TICKETS.pub.label).setEmoji(CONFIG.TICKETS.pub.emoji).setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId('btn_bugs').setLabel(CONFIG.TICKETS.bugs.label).setEmoji(CONFIG.TICKETS.bugs.emoji).setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId('btn_remplacement').setLabel(CONFIG.TICKETS.remplacement.label).setEmoji(CONFIG.TICKETS.remplacement.emoji).setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId('btn_donate').setLabel(CONFIG.TICKETS.donate.label).setEmoji(CONFIG.TICKETS.donate.emoji).setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId('btn_spin').setLabel(CONFIG.TICKETS.spin.label).setEmoji(CONFIG.TICKETS.spin.emoji).setStyle(ButtonStyle.Primary)
+                new ButtonBuilder().setCustomId('btn_pub').setLabel(CONFIG.TICKETS.pub.label).setEmoji(CONFIG.EMOJIS.PUB).setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('btn_bugs').setLabel(CONFIG.TICKETS.bugs.label).setEmoji(CONFIG.EMOJIS.BUGS).setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('btn_remplacement').setLabel(CONFIG.TICKETS.remplacement.label).setEmoji(CONFIG.EMOJIS.REMPLACEMENT).setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId('btn_donate').setLabel(CONFIG.TICKETS.donate.label).setEmoji(CONFIG.EMOJIS.DONATE).setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId('btn_spin').setLabel(CONFIG.TICKETS.spin.label).setEmoji(CONFIG.EMOJIS.SPIN).setStyle(ButtonStyle.Primary)
             );
 
             await interaction.channel.send({ embeds: [ticketEmbed], components: [row] });
-            return interaction.reply({ content: "✅ Ticket Panel sent successfully!", ephemeral: true });
+            return interaction.reply({ content: `${CONFIG.EMOJIS.SUCCESS} Ticket Panel sent successfully!`, ephemeral: true });
         }
 
         if (interaction.commandName === 'givefreespin') {
             const hasRole = interaction.member.roles.cache.has(CONFIG.FREE_SPIN_ADMIN_ROLE_ID);
             if (!hasRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                return interaction.reply({ content: "❌ You don't have permission to use this command!", ephemeral: true });
+                return interaction.reply({ content: `${CONFIG.EMOJIS.ERROR} You don't have permission to use this command!`, ephemeral: true });
             }
 
             const targetUser = interaction.options.getUser('user');
@@ -294,7 +328,7 @@ client.on('interactionCreate', async interaction => {
             const hours = interaction.options.getNumber('hours');
 
             if (amount <= 0 || hours <= 0) {
-                return interaction.reply({ content: "❌ Amount and Hours must be greater than 0!", ephemeral: true });
+                return interaction.reply({ content: `${CONFIG.EMOJIS.ERROR} Amount and Hours must be greater than 0!`, ephemeral: true });
             }
 
             cleanExpiredSpins();
@@ -311,14 +345,14 @@ client.on('interactionCreate', async interaction => {
             saveFreeSpinsData(spinsData);
 
             return interaction.reply({ 
-                content: `✅ Granted **${amount}** Free Spin(s) to <@${targetUser.id}>!\n⏱️ Expires in **${hours}** hour(s) (If unused, they will be removed).` 
+                content: `${CONFIG.EMOJIS.SUCCESS} Granted **${amount}** Free Spin(s) to <@${targetUser.id}>!\n${CONFIG.EMOJIS.TIMER} Expires in **${hours}** hour(s) (If unused, they will be removed).` 
             });
         }
 
         if (interaction.commandName === 'spin') {
             const channelCategory = interaction.channel.parentId;
             if (channelCategory !== CONFIG.TICKETS.spin.categoryId) {
-                return interaction.reply({ content: "❌ You can only use the `/spin` command inside a Spin Wheel ticket!", ephemeral: true });
+                return interaction.reply({ content: `${CONFIG.EMOJIS.ERROR} You can only use the \`/spin\` command inside a Spin Wheel ticket!`, ephemeral: true });
             }
 
             cleanExpiredSpins();
@@ -346,7 +380,7 @@ client.on('interactionCreate', async interaction => {
 
                 if (totalInvites < CONFIG.INVITES_REQUIRED) {
                     return interaction.reply({ 
-                        content: `❌ You have no Free Spins left and need **${CONFIG.INVITES_REQUIRED}** invites! You currently have **${totalInvites}** invites.`, 
+                        content: `${CONFIG.EMOJIS.ERROR} You have no Free Spins left and need **${CONFIG.INVITES_REQUIRED}** invites! You currently have **${totalInvites}** invites.`, 
                         ephemeral: true 
                     });
                 }
@@ -354,19 +388,18 @@ client.on('interactionCreate', async interaction => {
 
             const allFiles = getAllTxtFiles(projectsDir);
             if (allFiles.length === 0) {
-                return interaction.reply({ content: "❌ No project files found in the projects folder currently.", ephemeral: true });
+                return interaction.reply({ content: `${CONFIG.EMOJIS.ERROR} No project files found in the projects folder currently.`, ephemeral: true });
             }
 
             const randomFilePath = allFiles[Math.floor(Math.random() * allFiles.length)];
             const fileName = path.basename(randomFilePath);
 
             const spinTypeMsg = usedFreeSpin 
-                ? `🎟️ *(Used 1 Free Spin, remaining: **${remainingSpins}**)*`
-                : `📊 *(Used your server invites)*`;
+                ? `${CONFIG.EMOJIS.FREE_SPIN_TICKET} *(Used 1 Free Spin, remaining: **${remainingSpins}**)*`
+                : `${CONFIG.EMOJIS.STATS} *(Used your server invites)*`;
 
-            const msgText = `🎉 **Congratulations!** Here is your project from the Spin Wheel (**${fileName}**):\n${spinTypeMsg}`;
+            const msgText = `${CONFIG.EMOJIS.CONGRATS} **Congratulations!** Here is your project from the Spin Wheel (**${fileName}**):\n${spinTypeMsg}`;
 
-            // Try to send to DM first
             try {
                 await interaction.user.send({
                     content: msgText,
@@ -374,13 +407,12 @@ client.on('interactionCreate', async interaction => {
                 });
 
                 return interaction.reply({
-                    content: `📥 **We sent your project via Direct Message (DM)!** Please check your messages.\n${spinTypeMsg}`
+                    content: `${CONFIG.EMOJIS.INBOX} **We sent your project via Direct Message (DM)!** Please check your messages.\n${spinTypeMsg}`
                 });
 
             } catch (err) {
-                // If DM is closed, send directly in the ticket
                 return interaction.reply({ 
-                    content: `⚠️ **Your DMs are closed!** Here is your project directly in the ticket:\n\n${msgText}`,
+                    content: `${CONFIG.EMOJIS.WARNING} **Your DMs are closed!** Here is your project directly in the ticket:\n\n${msgText}`,
                     files: [randomFilePath]
                 });
             }
@@ -391,14 +423,14 @@ client.on('interactionCreate', async interaction => {
         if (interaction.customId === 'modal_rename_ticket') {
             const newName = interaction.fields.getTextInputValue('input_ticket_name');
             await interaction.channel.setName(newName);
-            return interaction.reply({ content: `✏️ Ticket renamed to: \`${newName}\`` });
+            return interaction.reply({ content: `${CONFIG.EMOJIS.PENCIL} Ticket renamed to: \`${newName}\`` });
         }
     }
 
     if (interaction.isButton()) {
         
         if (interaction.customId === 'ticket_close') {
-            await interaction.reply({ content: "🔒 This ticket will be closed in 5 seconds..." });
+            await interaction.reply({ content: `${CONFIG.EMOJIS.LOCK} This ticket will be closed in 5 seconds...` });
             setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
             return;
         }
@@ -408,14 +440,14 @@ client.on('interactionCreate', async interaction => {
             if (ticketConfig) {
                 const hasStaffRole = interaction.member.roles.cache.has(ticketConfig.roleId);
                 if (!hasStaffRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                    return interaction.reply({ content: "❌ Only staff members for this category can claim this ticket!", ephemeral: true });
+                    return interaction.reply({ content: `${CONFIG.EMOJIS.ERROR} Only staff members for this category can claim this ticket!`, ephemeral: true });
                 }
             }
 
             const newName = `claimed-by-${interaction.user.username}`;
             await interaction.channel.setName(newName);
 
-            return interaction.reply({ content: `✅ Ticket successfully claimed by **<@${interaction.user.id}>**! Channel renamed to: \`${newName}\`` });
+            return interaction.reply({ content: `${CONFIG.EMOJIS.SUCCESS} Ticket successfully claimed by **<@${interaction.user.id}>**! Channel renamed to: \`${newName}\`` });
         }
 
         if (interaction.customId === 'ticket_rename') {
@@ -444,12 +476,21 @@ client.on('interactionCreate', async interaction => {
             'btn_spin': CONFIG.TICKETS.spin
         };
 
+        const buttonEmojiMap = {
+            'btn_pub': CONFIG.EMOJIS.PUB,
+            'btn_bugs': CONFIG.EMOJIS.BUGS,
+            'btn_remplacement': CONFIG.EMOJIS.REMPLACEMENT,
+            'btn_donate': CONFIG.EMOJIS.DONATE,
+            'btn_spin': CONFIG.EMOJIS.SPIN
+        };
+
         const selectedTicket = typeMap[interaction.customId];
+        const selectedEmoji = buttonEmojiMap[interaction.customId];
         if (!selectedTicket) return;
 
         const category = interaction.guild.channels.cache.get(selectedTicket.categoryId);
         if (!category) {
-            return interaction.reply({ content: "❌ Invalid ticket category! Please check IDs in CONFIG.", ephemeral: true });
+            return interaction.reply({ content: `${CONFIG.EMOJIS.ERROR} Invalid ticket category! Please check IDs in CONFIG.`, ephemeral: true });
         }
 
         const ticketChannel = await interaction.guild.channels.create({
@@ -474,18 +515,18 @@ client.on('interactionCreate', async interaction => {
 
         const embedMsg = new EmbedBuilder()
             .setColor("#2b2d31")
-            .setTitle(`${selectedTicket.emoji} Ticket: ${selectedTicket.name}`)
+            .setTitle(`${selectedEmoji} Ticket: ${selectedTicket.name}`)
             .setDescription(`Welcome <@${interaction.user.id}>! <@&${selectedTicket.roleId}> staff will assist you shortly.`)
             .setThumbnail(client.user.displayAvatarURL());
 
         if (interaction.customId === 'btn_spin') {
-            embedMsg.addFields({ name: "🎰 Spin Instructions", value: "If you have Free Spins or 6 invites, type `/spin` here to get your project!" });
+            embedMsg.addFields({ name: `${CONFIG.EMOJIS.SLOT_MACHINE} Spin Instructions`, value: "If you have Free Spins or 6 invites, type `/spin` here to get your project!" });
         }
 
         const ticketControlRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ticket_close').setLabel('Close').setEmoji('<:delete:1540129242107346984>').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('ticket_claim').setLabel('Claim').setEmoji('<:claim:1540129878916210738>').setStyle(ButtonStyle.Success),
-            new ButtonBuilder().setCustomId('ticket_rename').setLabel('Rename').setEmoji('<:emoji_164:1539801927955648552>').setStyle(ButtonStyle.Secondary)
+            new ButtonBuilder().setCustomId('ticket_close').setLabel('Close').setEmoji(CONFIG.EMOJIS.DELETE).setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('ticket_claim').setLabel('Claim').setEmoji(CONFIG.EMOJIS.CLAIM).setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('ticket_rename').setLabel('Rename').setEmoji(CONFIG.EMOJIS.RENAME).setStyle(ButtonStyle.Secondary)
         );
 
         await ticketChannel.send({ 
@@ -494,7 +535,7 @@ client.on('interactionCreate', async interaction => {
             components: [ticketControlRow]
         });
 
-        return interaction.reply({ content: `✅ Your ticket has been opened here: ${ticketChannel}`, ephemeral: true });
+        return interaction.reply({ content: `${CONFIG.EMOJIS.SUCCESS} Your ticket has been opened here: ${ticketChannel}`, ephemeral: true });
     }
 });
 
