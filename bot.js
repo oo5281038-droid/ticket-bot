@@ -9,7 +9,10 @@ const {
     ChannelType, 
     SlashCommandBuilder, 
     REST, 
-    Routes 
+    Routes,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -97,6 +100,12 @@ function saveFreeSpinsData(data) {
     fs.writeFileSync(spinsFilePath, JSON.stringify(data, null, 2));
 }
 
+// Helper to check if a channel is inside a ticket category
+function getTicketTypeByChannel(channel) {
+    if (!channel || !channel.parentId) return null;
+    return Object.values(CONFIG.TICKETS).find(t => t.categoryId === channel.parentId);
+}
+
 // ==================== READY EVENT & SLASH COMMANDS ====================
 
 client.once('ready', async () => {
@@ -159,12 +168,56 @@ client.on('guildMemberAdd', async member => {
     }
 });
 
+// ==================== PREFIX COMMANDS ($close, $claim, $rename) ====================
+
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.guild) return;
+
+    const ticketConfig = getTicketTypeByChannel(message.channel);
+    if (!ticketConfig) return; // Ignore messages outside ticket channels
+
+    const args = message.content.trim().split(/ +/);
+    const command = args.shift().toLowerCase();
+
+    // 1. $close
+    if (command === '$close') {
+        await message.reply("🔒 Had ticket ghadi tsdd f 5 seconds...");
+        setTimeout(() => message.channel.delete().catch(() => {}), 5000);
+    }
+
+    // 2. $claim
+    if (command === '$claim') {
+        const hasStaffRole = message.member.roles.cache.has(ticketConfig.roleId);
+        if (!hasStaffRole && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            return message.reply("❌ Ghir l-staff dial had category li y9dr y-claimi ticket!");
+        }
+
+        const newName = `claimed-by-${message.author.username}`;
+        await message.channel.setName(newName);
+
+        return message.reply(`✅ Had ticket t-claimat b nja7 mn طرف **<@${message.author.id}>**! Channel name wlat: \`${newName}\``);
+    }
+
+    // 3. $rename <new-name>
+    if (command === '$rename') {
+        const newName = args.join('-');
+        if (!newName) {
+            return message.reply("❌ Khassk taktab smya l-jadida! M3al: `$rename my-new-ticket`");
+        }
+
+        await message.channel.setName(newName);
+        return message.reply(`✏️ Had ticket tbdlat smيتها l: \`${newName}\``);
+    }
+});
+
 // ==================== INTERACTION HANDLING ====================
 
 client.on('interactionCreate', async interaction => {
+    
+    // Slash Commands Handling
     if (interaction.isChatInputCommand()) {
         
-        // 1. Setup Ticket Command
+        // Setup Ticket Command
         if (interaction.commandName === 'setup-ticket') {
             if (interaction.channelId !== CONFIG.SETUP_CHANNEL_ID) {
                 return interaction.reply({ content: `❌ Had command t9dr ddirha ghir f <#${CONFIG.SETUP_CHANNEL_ID}>!`, ephemeral: true });
@@ -196,7 +249,7 @@ client.on('interactionCreate', async interaction => {
             return interaction.reply({ content: "✅ Ticket Panel sent successfully!", ephemeral: true });
         }
 
-        // 2. Give Free Spin Command
+        // Give Free Spin Command
         if (interaction.commandName === 'givefreespin') {
             const hasRole = interaction.member.roles.cache.has(CONFIG.FREE_SPIN_ADMIN_ROLE_ID);
             if (!hasRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
@@ -219,7 +272,7 @@ client.on('interactionCreate', async interaction => {
             });
         }
 
-        // 3. Spin Command
+        // Spin Command
         if (interaction.commandName === 'spin') {
             const channelCategory = interaction.channel.parentId;
             if (channelCategory !== CONFIG.TICKETS.spin.categoryId) {
@@ -267,8 +320,59 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
+    // Modal Submission (Rename Ticket via Button)
+    if (interaction.isModalSubmit()) {
+        if (interaction.customId === 'modal_rename_ticket') {
+            const newName = interaction.fields.getTextInputValue('input_ticket_name');
+            await interaction.channel.setName(newName);
+            return interaction.reply({ content: `✏️ Had ticket tbdlat smيتها l: \`${newName}\`` });
+        }
+    }
+
     // Buttons Execution
     if (interaction.isButton()) {
+        
+        // Ticket Action Buttons Inside Open Tickets
+        if (interaction.customId === 'ticket_close') {
+            await interaction.reply({ content: "🔒 Had ticket ghadi tsdd f 5 seconds..." });
+            setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
+            return;
+        }
+
+        if (interaction.customId === 'ticket_claim') {
+            const ticketConfig = getTicketTypeByChannel(interaction.channel);
+            if (ticketConfig) {
+                const hasStaffRole = interaction.member.roles.cache.has(ticketConfig.roleId);
+                if (!hasStaffRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                    return interaction.reply({ content: "❌ Ghir l-staff dial had category li y9dr y-claimi ticket!", ephemeral: true });
+                }
+            }
+
+            const newName = `claimed-by-${interaction.user.username}`;
+            await interaction.channel.setName(newName);
+
+            return interaction.reply({ content: `✅ Had ticket t-claimat b nja7 mn طرف **<@${interaction.user.id}>**! Channel name wlat: \`${newName}\`` });
+        }
+
+        if (interaction.customId === 'ticket_rename') {
+            const modal = new ModalBuilder()
+                .setCustomId('modal_rename_ticket')
+                .setTitle('Rename Ticket');
+
+            const nameInput = new TextInputBuilder()
+                .setCustomId('input_ticket_name')
+                .setLabel('New Ticket Name')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('Enter the new channel name...')
+                .setRequired(true);
+
+            const modalRow = new ActionRowBuilder().addComponents(nameInput);
+            modal.addComponents(modalRow);
+
+            return interaction.showModal(modal);
+        }
+
+        // Panel Creation Buttons
         const typeMap = {
             'btn_pub': CONFIG.TICKETS.pub,
             'btn_bugs': CONFIG.TICKETS.bugs,
@@ -315,7 +419,18 @@ client.on('interactionCreate', async interaction => {
             embedMsg.addFields({ name: "🎰 Spin Instructions", value: "Ila 3ndk Free Spins aw 6 invites, ktab `/spin` hna باش takhod project dialk!" });
         }
 
-        await ticketChannel.send({ content: `<@${interaction.user.id}> | <@&${selectedTicket.roleId}>`, embeds: [embedMsg] });
+        // Action controls inside the created ticket
+        const ticketControlRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('ticket_close').setLabel('Close').setEmoji('<:delete:1540129242107346984>').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('ticket_claim').setLabel('Claim').setEmoji('<:claim:1540129878916210738>').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('ticket_rename').setLabel('Rename').setEmoji('<:emoji_164:1539801927955648552>').setStyle(ButtonStyle.Secondary)
+        );
+
+        await ticketChannel.send({ 
+            content: `<@${interaction.user.id}> | <@&${selectedTicket.roleId}>`, 
+            embeds: [embedMsg],
+            components: [ticketControlRow]
+        });
 
         return interaction.reply({ content: `✅ Ticket dialk tft7at hna: ${ticketChannel}`, ephemeral: true });
     }
