@@ -41,36 +41,36 @@ const CONFIG = {
             name: "Pub",
             label: "Pub",
             emoji: "🛡️",
-            categoryId: "PUT_PUB_CATEGORY_ID_HERE", // 👈 ID dial Category Pub
-            roleId: "PUT_PUB_STAFF_ROLE_ID_HERE"      // 👈 ID dial Role Staff Pub
+            categoryId: "1540123963043086417", // 👈 ID dial Category Pub
+            roleId: "1540124358771605565"      // 👈 ID dial Role Staff Pub
         },
         bugs: {
             name: "Bugs",
             label: "Bugs",
             emoji: "🔑",
-            categoryId: "PUT_BUGS_CATEGORY_ID_HERE", // 👈 ID dial Category Bugs
-            roleId: "PUT_BUGS_STAFF_ROLE_ID_HERE"    // 👈 ID dial Role Staff Bugs
+            categoryId: "1540123985860239472", // 👈 ID dial Category Bugs
+            roleId: "1540124504406098071"    // 👈 ID dial Role Staff Bugs
         },
         donate: {
             name: "Donate",
             label: "Donate",
             emoji: "💵",
-            categoryId: "PUT_DONATE_CATEGORY_ID_HERE", // 👈 ID dial Category Donate
-            roleId: "PUT_DONATE_STAFF_ROLE_ID_HERE"    // 👈 ID dial Role Staff Donate
+            categoryId: "1540123940700299374", // 👈 ID dial Category Donate
+            roleId: "1540124475503280229"    // 👈 ID dial Role Staff Donate
         },
         remplacement: {
             name: "Remplacement",
             label: "Remplacement",
             emoji: "🔨",
-            categoryId: "PUT_REMPLACEMENT_CATEGORY_ID_HERE", // 👈 ID dial Category Remplacement
-            roleId: "PUT_REMPLACEMENT_STAFF_ROLE_ID_HERE"    // 👈 ID dial Role Staff Remplacement
+            categoryId: "1540123905480462456", // 👈 ID dial Category Remplacement
+            roleId: "1540124434772533308"    // 👈 ID dial Role Staff Remplacement
         },
         spin: {
             name: "Spin Wheel",
             label: "Spin Wheel",
             emoji: "🎰",
-            categoryId: "PUT_SPIN_CATEGORY_ID_HERE", // 👈 ID dial Category Spin Wheel
-            roleId: "PUT_SPIN_STAFF_ROLE_ID_HERE"    // 👈 ID dial Role Staff Spin
+            categoryId: "1540124005137121370", // 👈 ID dial Category Spin Wheel
+            roleId: "1540124575042637955"    // 👈 ID dial Role Staff Spin
         }
     }
 };
