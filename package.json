@@ -1,0 +1,12 @@
+{
+  "name": "discord-ticket-spin-bot",
+  "version": "1.0.0",
+  "description": "Discord Ticket & Project Spin Bot",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1"
+  }
+}
