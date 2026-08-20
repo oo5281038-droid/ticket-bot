@@ -26,55 +26,51 @@ const client = new Client({
 
 // ==================== CONFIGURATION ====================
 const CONFIG = {
-    // Railway Token (Environment Variable)
     TOKEN: process.env.TOKEN, 
     
-    // Server & Bot IDs
-    CLIENT_ID: "1540099644028096572", // ID dial Bot
-    GUILD_ID: "1538685893622108251",       // ID dial Server
+    CLIENT_ID: "1540099644028096572", 
+    GUILD_ID: "1538685893622108251",  
     
-    // Customization & Links
-    SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png?ex=6a88cdeb&is=6a877c6b&hm=9f964c7489d7150b992380365654f836dec100d2b76a8c2daeb0e162bb15afac&", // Link dial Banner
-    SETUP_CHANNEL_ID: "1538901953331986594", // Channel fin msmouh /setup-ticket
-    WELCOME_CHANNEL_ID: "1540122188256911410", // Channel dial Welcome
-    INVITES_REQUIRED: 6, // 3dad l-invites required for /spin
+    SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png?ex=6a88cdeb&is=6a877c6b&hm=9f964c7489d7150b992380365654f836dec100d2b76a8c2daeb0e162bb15afac&", 
+    SETUP_CHANNEL_ID: "1538901953331986594", 
+    INVITES_REQUIRED: 6, 
 
-    // Categories & Staff Roles IDs for each Ticket
+    // 🔴 HNA KHASSK T-BDDEL L-IDs DIAL CATEGORY W ROLES:
     TICKETS: {
         pub: {
             name: "Pub",
             label: "Pub",
             emoji: "🛡️",
-            categoryId: "000000000000000000",
-            roleId: "000000000000000000"
+            categoryId: "PUT_PUB_CATEGORY_ID_HERE", // 👈 ID dial Category Pub
+            roleId: "PUT_PUB_STAFF_ROLE_ID_HERE"      // 👈 ID dial Role Staff Pub
         },
         bugs: {
             name: "Bugs",
             label: "Bugs",
             emoji: "🔑",
-            categoryId: "000000000000000000",
-            roleId: "000000000000000000"
+            categoryId: "PUT_BUGS_CATEGORY_ID_HERE", // 👈 ID dial Category Bugs
+            roleId: "PUT_BUGS_STAFF_ROLE_ID_HERE"    // 👈 ID dial Role Staff Bugs
         },
         donate: {
             name: "Donate",
             label: "Donate",
             emoji: "💵",
-            categoryId: "000000000000000000",
-            roleId: "000000000000000000"
+            categoryId: "PUT_DONATE_CATEGORY_ID_HERE", // 👈 ID dial Category Donate
+            roleId: "PUT_DONATE_STAFF_ROLE_ID_HERE"    // 👈 ID dial Role Staff Donate
         },
         remplacement: {
             name: "Remplacement",
             label: "Remplacement",
             emoji: "🔨",
-            categoryId: "000000000000000000",
-            roleId: "000000000000000000"
+            categoryId: "PUT_REMPLACEMENT_CATEGORY_ID_HERE", // 👈 ID dial Category Remplacement
+            roleId: "PUT_REMPLACEMENT_STAFF_ROLE_ID_HERE"    // 👈 ID dial Role Staff Remplacement
         },
         spin: {
             name: "Spin Wheel",
             label: "Spin Wheel",
             emoji: "🎰",
-            categoryId: "000000000000000000",
-            roleId: "000000000000000000"
+            categoryId: "PUT_SPIN_CATEGORY_ID_HERE", // 👈 ID dial Category Spin Wheel
+            roleId: "PUT_SPIN_STAFF_ROLE_ID_HERE"    // 👈 ID dial Role Staff Spin
         }
     }
 };
@@ -86,11 +82,12 @@ if (!fs.existsSync(projectsDir)) {
     fs.mkdirSync(projectsDir);
 }
 
-// ==================== EVENTS ====================
+// ==================== READY EVENT & SLASH COMMANDS ====================
 
 client.once('ready', async () => {
     console.log(`🤖 Bot Ready! Logged in as ${client.user.tag}`);
     
+    // Cache current server invites for tracking
     for (const [guildId, guild] of client.guilds.cache) {
         try {
             const firstInvites = await guild.invites.fetch();
@@ -122,47 +119,27 @@ client.once('ready', async () => {
     }
 });
 
+// Update Invites Cache on new invite creation
 client.on('inviteCreate', invite => {
     const guildInvites = invitesCache.get(invite.guild.id) || new Map();
     guildInvites.set(invite.code, invite.uses);
     invitesCache.set(invite.guild.id, guildInvites);
 });
 
+// Cache invites when member joins
 client.on('guildMemberAdd', async member => {
-    const cachedInvites = invitesCache.get(member.guild.id);
-    const newInvites = await member.guild.invites.fetch();
-    invitesCache.set(member.guild.id, new Map(newInvites.map(inv => [inv.code, inv.uses])));
-
-    const welcomeChannel = member.guild.channels.cache.get(CONFIG.WELCOME_CHANNEL_ID);
-    if (welcomeChannel) {
-        const welcomeEmbed = new EmbedBuilder()
-            .setColor("#0099ff")
-            .setAuthor({ name: member.guild.name, iconURL: client.user.displayAvatarURL() })
-            .setTitle(`👋 Welcome <@${member.id}>, to 🐙 | Octopus Studio You Are ${member.guild.memberCount} !`)
-            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-            .setDescription(
-                `We are glad to have you here! We offer high-quality development services tailored to your needs.\n\n` +
-                `🛒 **Our Services:**\n` +
-                `• Custom Discord Bots Development\n` +
-                `• Pre-built & Ready-to-use Bots\n` +
-                `• Full Discord Server Setup & Configuration\n` +
-                `• Custom Web & Software Development\n\n` +
-                `💳 **Payment Methods:**\n` +
-                `We accept **ALL** payment methods worldwide (Crypto, PayPal, Credit Cards, Bank Transfer, Local Payments, etc.)!\n\n` +
-                `⭐ **How to get started?**\n` +
-                `1. Check our work & feedback in <#channel-reviews>\n` +
-                `2. View our prices in <#channel-prices>\n` +
-                `3. Open a ticket in <#channel-tickets> to order or ask questions!\n\n` +
-                `Enjoy your stay! 🚀`
-            )
-            .setImage(CONFIG.SERVER_BANNER)
-            .setTimestamp();
-
-        welcomeChannel.send({ embeds: [welcomeEmbed] });
+    try {
+        const newInvites = await member.guild.invites.fetch();
+        invitesCache.set(member.guild.id, new Map(newInvites.map(inv => [inv.code, inv.uses])));
+    } catch (err) {
+        console.log("Could not update invites cache on join");
     }
 });
 
+// ==================== INTERACTION HANDLING ====================
+
 client.on('interactionCreate', async interaction => {
+    // 1. Slash Commands
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'setup-ticket') {
             if (interaction.channelId !== CONFIG.SETUP_CHANNEL_ID) {
@@ -228,6 +205,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
+    // 2. Ticket Buttons Execution
     if (interaction.isButton()) {
         const typeMap = {
             'btn_pub': CONFIG.TICKETS.pub,
@@ -242,7 +220,7 @@ client.on('interactionCreate', async interaction => {
 
         const category = interaction.guild.channels.cache.get(selectedTicket.categoryId);
         if (!category) {
-            return interaction.reply({ content: "❌ Category dial had ticket makhddamach! Check IDs f config.", ephemeral: true });
+            return interaction.reply({ content: "❌ Category dial had ticket makhddamach! Check IDs f CONFIG.", ephemeral: true });
         }
 
         const ticketChannel = await interaction.guild.channels.create({
