@@ -52,8 +52,8 @@ const CONFIG = {
         DONATE: "<:mny:1540091412719210637>",
         REMPLACEMENT: "<a:work1:1540127049132286022>",
         SPIN: "<a:extra_7:1540127733231648808>",
-        BUY_ORDER: "🛒",
-        APPLY_SELLER: "📋",
+        BUY_ORDER: "<:SHOP:1539754401340858498>",
+        APPLY_SELLER: "<:apply:1540509721851863110>",
         DELETE: "<:delete:1540129242107346984>",
         CLAIM: "<:claim:1540129878916210738>",
         RENAME: "<:emoji_164:1539801927955648552>",
@@ -76,12 +76,12 @@ const CONFIG = {
 
     TICKETS: {
         pub: { name: "Pub", label: "Pub", categoryId: "1540123963043086417", roleId: "1540124358771605565" },
-        bugs: { name: "Bugs", label: "Bugs", categoryId: "1540123985860239472", roleId: "1540124504406098071" },
-        donate: { name: "Donate", label: "Donate", categoryId: "1540123940700299374", roleId: "1540124475503280229" },
+        bugs: { name: "Bugs", label: "Bugs", categoryId: "1540123940700299374", roleId: "1540124504406098071" },
+        donate: { name: "Donate", label: "Donate", categoryId: "1540123985860239472", roleId: "1540124475503280229" },
         remplacement: { name: "Remplacement", label: "Remplacement", categoryId: "1540123905480462456", roleId: "1540124434772533308" },
         spin: { name: "Spin Wheel", label: "Spin Wheel", categoryId: "1540124005137121370", roleId: "1540124575042637955" },
-        buy_order: { name: "Buy Order", label: "Buy Order", categoryId: "ID_CATEGORY_BUY_ORDER", roleId: "ID_ROLE_BUY_ORDER" },
-        apply_seller: { name: "Apply Seller", label: "Apply Seller", categoryId: "ID_CATEGORY_APPLY_SELLER", roleId: "ID_ROLE_SELLER_MANAGERS" }
+        buy_order: { name: "Buy Order", label: "Buy Order", categoryId: "1540504775760678952", roleId: "1540509073332641865" },
+        apply_seller: { name: "Apply Seller", label: "Apply Seller", categoryId: "1540504734191063070", roleId: "1540509073332641865" }
     }
 };
 
