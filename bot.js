@@ -36,6 +36,7 @@ const CONFIG = {
     GUILD_ID: "1538685893622108251",  
     
     FREE_SPIN_ADMIN_ROLE_ID: "1538910850272722997", 
+    BUY_ORDER_TAG_ROLE_ID: "1538901876043554817", // الرتبة التي سيتم عمل تاغ لها عند فتح تذكرة شراء
 
     SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
     SETUP_CHANNEL_ID: "1538901953331986594", 
@@ -168,8 +169,14 @@ client.on('messageCreate', async message => {
     if (message.channel.parentId === CONFIG.TICKETS.buy_order.categoryId) {
         if (message.content.toLowerCase().startsWith('need')) {
             const formattedName = message.content.toLowerCase().replace(/[^a-z0-9- ]/g, '').trim().replace(/\s+/g, '-');
-            await message.channel.setName(formattedName).catch(() => {});
-            await message.react('✅').catch(() => {});
+            try {
+                await message.channel.setName(formattedName);
+                await message.react('✅').catch(() => {});
+            } catch (err) {
+                // التعامل مع حالة التكرار السريع وتخطي الـ Rate Limit
+                await message.react('⚠️').catch(() => {});
+                await message.reply(`${CONFIG.EMOJIS.WARNING} ما أمكنش يتغير اسم الروم دابا بسبب حماية Discord (Rate Limit)، حاول شوية آخر.`).catch(() => {});
+            }
         }
     }
 
@@ -190,15 +197,23 @@ client.on('messageCreate', async message => {
             return message.reply(`${CONFIG.EMOJIS.ERROR} Only staff members can claim this ticket!`);
         }
         const newName = `claimed-by-${message.author.username}`;
-        await message.channel.setName(newName);
-        return message.reply(`${CONFIG.EMOJIS.SUCCESS} Ticket claimed by **<@${message.author.id}>**!`);
+        try {
+            await message.channel.setName(newName);
+            return message.reply(`${CONFIG.EMOJIS.SUCCESS} Ticket claimed by **<@${message.author.id}>**!`);
+        } catch (e) {
+            return message.reply(`${CONFIG.EMOJIS.SUCCESS} Ticket claimed by **<@${message.author.id}>**! (تعذر تغيير اسم القناة حالياً)`);
+        }
     }
 
     if (command === '$rename') {
         const newName = args.join('-');
         if (!newName) return message.reply(`${CONFIG.EMOJIS.ERROR} Please provide a name!`);
-        await message.channel.setName(newName);
-        return message.reply(`${CONFIG.EMOJIS.PENCIL} Ticket renamed to: \`${newName}\``);
+        try {
+            await message.channel.setName(newName);
+            return message.reply(`${CONFIG.EMOJIS.PENCIL} Ticket renamed to: \`${newName}\``);
+        } catch (e) {
+            return message.reply(`${CONFIG.EMOJIS.ERROR} تعذر تغيير الاسم حالياً بسبب Rate Limit الخاص بـ Discord.`);
+        }
     }
 });
 
@@ -269,10 +284,16 @@ client.on('interactionCreate', async interaction => {
     // Modal Submissions
     if (interaction.isModalSubmit()) {
         if (interaction.customId === 'modal_rename_ticket') {
+            await interaction.deferReply({ ephemeral: true });
             const newName = interaction.fields.getTextInputValue('input_ticket_name');
             const formattedName = newName.toLowerCase().replace(/[^a-z0-9- ]/g, '').trim().replace(/\s+/g, '-');
-            await interaction.channel.setName(formattedName).catch(() => {});
-            return interaction.reply({ content: `${CONFIG.EMOJIS.PENCIL} Ticket renamed to: \`${formattedName}\``, ephemeral: true });
+            
+            try {
+                await interaction.channel.setName(formattedName);
+                return interaction.editReply({ content: `${CONFIG.EMOJIS.PENCIL} Ticket renamed to: \`${formattedName}\`` });
+            } catch (err) {
+                return interaction.editReply({ content: `${CONFIG.EMOJIS.ERROR} تعذر تغيير اسم القناة حالياً بسبب حماية Discord (Rate Limit).` });
+            }
         }
 
         if (interaction.customId === 'modal_apply_seller') {
@@ -353,16 +374,23 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (interaction.customId === 'ticket_claim') {
+            await interaction.deferReply();
             const ticketConfig = getTicketTypeByChannel(interaction.channel);
             if (ticketConfig) {
                 const hasStaffRole = interaction.member.roles.cache.has(ticketConfig.roleId);
                 if (!hasStaffRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
-                    return interaction.reply({ content: `${CONFIG.EMOJIS.ERROR} Only staff members can claim!`, ephemeral: true });
+                    return interaction.editReply({ content: `${CONFIG.EMOJIS.ERROR} Only staff members can claim!` });
                 }
             }
             const newName = `claimed-by-${interaction.user.username}`;
-            await interaction.channel.setName(newName).catch(() => {});
-            return interaction.reply({ content: `${CONFIG.EMOJIS.SUCCESS} Claimed by **<@${interaction.user.id}>**!` });
+            
+            try {
+                await interaction.channel.setName(newName);
+            } catch (err) {
+                // تخطي خطأ تغيير اسم القناة
+            }
+
+            return interaction.editReply({ content: `${CONFIG.EMOJIS.SUCCESS} Claimed by **<@${interaction.user.id}>**!` });
         }
 
         const typeMap = {
@@ -409,7 +437,11 @@ client.on('interactionCreate', async interaction => {
                     `\`\`\`\nneed <product>\nneed <اسم المنتج>\n\`\`\``
                 );
 
-            await ticketChannel.send({ embeds: [buyEmbed], components: [ticketControlRow] });
+            await ticketChannel.send({ 
+                content: `<@&${CONFIG.BUY_ORDER_TAG_ROLE_ID}>`, 
+                embeds: [buyEmbed], 
+                components: [ticketControlRow] 
+            });
         } 
         else if (interaction.customId === 'btn_apply_seller') {
             const applyEmbed = new EmbedBuilder()
