@@ -1,1 +1,73 @@
-ssoooonn....
+import discord
+from discord import app_commands
+from discord.ext import commands
+import asyncio
+import random
+
+# Direct Bot Setup
+intents = discord.Intents.default()
+intents.members = True  # Khassk tf3el 'Server Members Intent' f Discord Developer Portal
+
+class BroadcastBot(commands.Bot):
+    def __init__(self):
+        super().__init__(command_prefix="!", intents=intents)
+
+    async def setup_hook(self):
+        await self.tree.sync()
+
+bot = BroadcastBot()
+
+# ID dial l-room li bghiti ykhddam fiha l-bot ghir fiha (Bddel had الرقم)
+ALLOWED_CHANNEL_ID = 1539821380709912636 
+
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+
+@bot.tree.command(name="broadcast", description="Sefet mp l ga3 lmembers m3a delay bash matbanach")
+@app_commands.describe(
+    message="Lmesaj li bghiti tsefet",
+    min_delay="A9al wa9t bin kol member (f seconds) - Default 5s",
+    max_delay="Aktar wa9t bin kol member (f seconds) - Default 12s"
+)
+async def broadcast(
+    interaction: discord.Interaction, 
+    message: str, 
+    min_delay: int = 5, 
+    max_delay: int = 12
+):
+    # Check 1: Wash l-command tdart f l-room l-m9boula?
+    if interaction.channel_id != ALLOWED_CHANNEL_ID:
+        await interaction.response.send_message(
+            f"❌ NOT HERE DONKEY GO TO THIS ROOM  <#{ALLOWED_CHANNEL_ID}>.", 
+            ephemeral=True
+        )
+        return
+
+    # Check 2: Admin permission
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ WHERE IS PERIMISSION ? (Administrator) DONT DO THAT AGAIN", ephemeral=True)
+        return
+
+    await interaction.response.send_message(f"🚀 BROADCAST STARTED 1,2,3 {interaction.guild.member_count} members...", ephemeral=True)
+
+    sent = 0
+    failed = 0
+    members = [m for m in interaction.guild.members if not m.bot]
+
+    for member in members:
+        try:
+            await member.send(message)
+            sent += 1
+            print(f"✅ Sft l: {member.name}")
+        except Exception:
+            failed += 1
+            print(f"❌ Madirosh l: {member.name}")
+
+        # Random delay bash matbanach
+        wait_time = random.uniform(min_delay, max_delay)
+        await asyncio.sleep(wait_time)
+
+    await interaction.followup.send(f"✅ All DONE!\n• SEND TO : **{sent}**\n• FAILED TO SEND TO : **{failed}**", ephemeral=True)
+
+bot.run("ur token")
