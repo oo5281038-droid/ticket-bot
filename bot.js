@@ -121,19 +121,6 @@ function cleanExpiredSpins() {
 
 setInterval(cleanExpiredSpins, 60000);
 
-function getAllTxtFiles(dirPath, arrayOfFiles = []) {
-    const files = fs.readdirSync(dirPath);
-    files.forEach(file => {
-        const fullPath = path.join(dirPath, file);
-        if (fs.statSync(fullPath).isDirectory()) {
-            arrayOfFiles = getAllTxtFiles(fullPath, arrayOfFiles);
-        } else if (file.endsWith('.txt')) {
-            arrayOfFiles.push(fullPath);
-        }
-    });
-    return arrayOfFiles;
-}
-
 // ==================== READY EVENT & SLASH COMMANDS ====================
 
 client.once('ready', async () => {
@@ -277,21 +264,15 @@ client.on('interactionCreate', async interaction => {
 
             return interaction.reply({ content: `${CONFIG.EMOJIS.SUCCESS} Granted **${amount}** Free Spin(s) to <@${targetUser.id}>!` });
         }
-
-        if (interaction.commandName === 'spin') {
-            if (interaction.channel.parentId !== CONFIG.TICKETS.spin.categoryId) {
-                return interaction.reply({ content: `${CONFIG.EMOJIS.ERROR} Use this inside a Spin ticket!`, ephemeral: true });
-            }
-            // Code Spin Wheel Logic ...
-        }
     }
 
     // Modal Submissions
     if (interaction.isModalSubmit()) {
         if (interaction.customId === 'modal_rename_ticket') {
             const newName = interaction.fields.getTextInputValue('input_ticket_name');
-            await interaction.channel.setName(newName);
-            return interaction.reply({ content: `${CONFIG.EMOJIS.PENCIL} Ticket renamed to: \`${newName}\`` });
+            const formattedName = newName.toLowerCase().replace(/[^a-z0-9- ]/g, '').trim().replace(/\s+/g, '-');
+            await interaction.channel.setName(formattedName).catch(() => {});
+            return interaction.reply({ content: `${CONFIG.EMOJIS.PENCIL} Ticket renamed to: \`${formattedName}\``, ephemeral: true });
         }
 
         if (interaction.customId === 'modal_apply_seller') {
@@ -316,10 +297,8 @@ client.on('interactionCreate', async interaction => {
             await interaction.channel.send({ content: `**طلب جديد من <@${interaction.user.id}>**`, embeds: [resultEmbed] });
             await interaction.reply({ content: `${CONFIG.EMOJIS.SUCCESS} تم إرسال طلبك بنجاح!`, ephemeral: true });
 
-            // Send +come to seller management role
             await interaction.channel.send(`+come <@&${CONFIG.TICKETS.apply_seller.roleId}>`);
 
-            // DM Members of that role
             const role = interaction.guild.roles.cache.get(CONFIG.TICKETS.apply_seller.roleId);
             if (role) {
                 role.members.forEach(member => {
@@ -332,6 +311,21 @@ client.on('interactionCreate', async interaction => {
     // Buttons
     if (interaction.isButton()) {
         
+        if (interaction.customId === 'ticket_rename') {
+            const modal = new ModalBuilder()
+                .setCustomId('modal_rename_ticket')
+                .setTitle('Rename Ticket');
+
+            const nameInput = new TextInputBuilder()
+                .setCustomId('input_ticket_name')
+                .setLabel('New Ticket Name')
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
+
+            modal.addComponents(new ActionRowBuilder().addComponents(nameInput));
+            return interaction.showModal(modal);
+        }
+
         if (interaction.customId === 'btn_click_apply') {
             const modal = new ModalBuilder().setCustomId('modal_apply_seller').setTitle('Apply Team Submit');
 
@@ -367,7 +361,7 @@ client.on('interactionCreate', async interaction => {
                 }
             }
             const newName = `claimed-by-${interaction.user.username}`;
-            await interaction.channel.setName(newName);
+            await interaction.channel.setName(newName).catch(() => {});
             return interaction.reply({ content: `${CONFIG.EMOJIS.SUCCESS} Claimed by **<@${interaction.user.id}>**!` });
         }
 
@@ -404,7 +398,6 @@ client.on('interactionCreate', async interaction => {
             new ButtonBuilder().setCustomId('ticket_rename').setLabel('Rename').setEmoji(CONFIG.EMOJIS.RENAME).setStyle(ButtonStyle.Secondary)
         );
 
-        // Buy Order Panel (Echo Bot Style)
         if (interaction.customId === 'btn_buy_order') {
             const buyEmbed = new EmbedBuilder()
                 .setColor("#d4af37")
@@ -418,7 +411,6 @@ client.on('interactionCreate', async interaction => {
 
             await ticketChannel.send({ embeds: [buyEmbed], components: [ticketControlRow] });
         } 
-        // Apply Seller Panel
         else if (interaction.customId === 'btn_apply_seller') {
             const applyEmbed = new EmbedBuilder()
                 .setColor("#2b2d31")
@@ -434,7 +426,6 @@ client.on('interactionCreate', async interaction => {
 
             await ticketChannel.send({ embeds: [applyEmbed], components: [applyBtnRow, ticketControlRow] });
         } 
-        // Standard Tickets
         else {
             const embedMsg = new EmbedBuilder()
                 .setColor("#2b2d31")
