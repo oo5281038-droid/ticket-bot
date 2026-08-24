@@ -52,7 +52,7 @@ const CONFIG = {
     // 👈 رابط الصورة/الخط (Line Banner)
     LINE_BANNER: "https://cdn.discordapp.com/attachments/1541542336247631893/1541545506835275837/banner_gif_octopus_studio.gif?ex=6a8dfba1&is=6a8caa21&hm=2331f9c4df94b4c7ae656c9026529d87e048ebbf2b26743efe0e4f33693b7525&",
 
-    // 👈 رابط اللوغو (Logo Banner) حط الرابط المباشر ديال اللوغو هنا
+    // 👈 رابط اللوغو (Logo Banner)
     SERVER_LOGO: "https://cdn.discordapp.com/attachments/1538901931773141082/1541502242253705326/kling_20260825_VIDEO_hello_need_276_0-ezgif.com-video-to-gif-converter.gif?ex=6a8dd356&is=6a8c81d6&hm=8caad6ed557d185634f404736aaa44b1649d13cdf432b694c17b37eec10f95b2&",
 
     SETUP_CHANNEL_ID: "1538901953331986594", 
@@ -183,6 +183,7 @@ client.on('messageCreate', async message => {
 
     // 1. أمر الخط: line أو !line
     if (msgContent === 'line' || msgContent === '!line') {
+        await message.delete().catch(() => {});
         const lineEmbed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setImage(CONFIG.LINE_BANNER);
@@ -192,6 +193,7 @@ client.on('messageCreate', async message => {
 
     // 2. أمر البنر الرئيسي: banner أو !banner
     if (msgContent === 'banner' || msgContent === '!banner') {
+        await message.delete().catch(() => {});
         const bannerEmbed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setImage(CONFIG.ORDER_BANNER);
@@ -201,6 +203,7 @@ client.on('messageCreate', async message => {
 
     // 3. أمر اللوغو: logo أو !logo
     if (msgContent === 'logo' || msgContent === '!logo') {
+        await message.delete().catch(() => {});
         const logoEmbed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setImage(CONFIG.SERVER_LOGO);
@@ -467,7 +470,7 @@ client.on('interactionCreate', async interaction => {
             const ticketConfig = getTicketTypeByChannel(interaction.channel);
             if (ticketConfig) {
                 const hasStaffRole = interaction.member.roles.cache.has(ticketConfig.roleId);
-                if (!hasStaffRole && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                if (!hasStaffRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
                     return interaction.editReply({ content: `${CONFIG.EMOJIS.ERROR} Only staff members can claim!` });
                 }
             }
