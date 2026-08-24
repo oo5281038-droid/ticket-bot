@@ -30,6 +30,9 @@ const client = new Client({
     ]
 });
 
+// Map لتتبع عدد مرات كتابة need في كل قناة
+const needTracker = new Map();
+
 // ==================== CONFIGURATION ====================
 const CONFIG = {
     TOKEN: process.env.TOKEN, 
@@ -40,7 +43,14 @@ const CONFIG = {
     FREE_SPIN_ADMIN_ROLE_ID: "1538910850272722997", 
     BUY_ORDER_TAG_ROLE_ID: "1538901876043554817",
 
+    // الـ Category المخصصة ميزة الـ Claim برمز *
+    CLAIM_CATEGORY_ID: "1540504775760678952", 
+
     SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
+    
+    // 👈 بدّل هاد الرابط بالبنر الجديدة ديالك فاش تصاوبها
+    ORDER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
+
     SETUP_CHANNEL_ID: "1538901953331986594", 
     INVITES_REQUIRED: 6, 
 
@@ -56,7 +66,6 @@ const CONFIG = {
         REMPLACEMENT: "<a:work1:1540127049132286022>",
         SPIN: "<a:extra_7:1540127733231648808>",
         BUY_ORDER: "<:SHOP:1539754401340858498>",
-        APPLY_SELLER: "<:apply:1540509721851863110>",
         DELETE: "<:delete:1540129242107346984>",
         CLAIM: "<:claim:1540129878916210738>",
         RENAME: "<:emoji_164:1539801927955648552>",
@@ -83,8 +92,7 @@ const CONFIG = {
         remplacement: { name: "Remplacement", label: "Remplacement", description: "Report issues or replacement", categoryId: "1540123905480462456", roleId: "1540124434772533308", emoji: "<a:work1:1540127049132286022>" },
         donate: { name: "Donate", label: "Donate", description: "Support The Server", categoryId: "1540123985860239472", roleId: "1540124475503280229", emoji: "<:mny:1540091412719210637>" },
         spin: { name: "Spin Wheel", label: "Spin Wheel", description: "Open Spin Ticket", categoryId: "1540124005137121370", roleId: "1540124575042637955", emoji: "<a:extra_7:1540127733231648808>" },
-        buy_order: { name: "Buy Order", label: "Buy Order", description: "Create a buy order", categoryId: "1540504775760678952", roleId: "1540509073332641865", emoji: "<:SHOP:1539754401340858498>" },
-        apply_seller: { name: "Apply Seller", label: "Apply Seller", description: "Apply to become a seller", categoryId: "1540504734191063070", roleId: "1540509073332641865", emoji: "<:apply:1540509721851863110>" }
+        buy_order: { name: "Buy Order", label: "Buy Order", description: "Create a buy order", categoryId: "1540504775760678952", roleId: "1540509073332641865", emoji: "<:SHOP:1539754401340858498>" }
     }
 };
 
@@ -167,8 +175,25 @@ client.once('ready', async () => {
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
 
+    // امر سريع لإرسال البنر عند الحاجة
+    if (message.content.toLowerCase() === '!banner') {
+        const bannerEmbed = new EmbedBuilder()
+            .setColor("#2b2d31")
+            .setImage(CONFIG.ORDER_BANNER);
+        return message.channel.send({ embeds: [bannerEmbed] });
+    }
+
+    // 1. نظام الـ Need Counter
     if (message.channel.parentId === CONFIG.TICKETS.buy_order.categoryId) {
         if (message.content.toLowerCase().startsWith('need')) {
+            const currentCount = needTracker.get(message.channel.id) || 0;
+
+            if (currentCount >= 2) {
+                return message.reply(`${CONFIG.EMOJIS.WARNING} Do not spam need .... or u will get warn`);
+            }
+
+            needTracker.set(message.channel.id, currentCount + 1);
+
             const formattedName = message.content.toLowerCase().replace(/[^a-z0-9- ]/g, '').trim().replace(/\s+/g, '-');
             try {
                 await message.channel.setName(formattedName);
@@ -178,6 +203,33 @@ client.on('messageCreate', async message => {
                 await message.reply(`${CONFIG.EMOJIS.WARNING} ما أمكنش يتغير اسم الروم دابا بسبب حماية Discord (Rate Limit)، حاول شوية آخر.`).catch(() => {});
             }
         }
+    }
+
+    // 2. نظام Claim بـ "*" فالـ Category المحددة
+    if (message.content.trim() === '*' && message.channel.parentId === CONFIG.CLAIM_CATEGORY_ID) {
+        const ticketConfig = getTicketTypeByChannel(message.channel);
+        if (ticketConfig) {
+            const hasStaffRole = message.member.roles.cache.has(ticketConfig.roleId);
+            if (!hasStaffRole && !message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
+        }
+
+        const newName = `by-${message.author.username}`;
+        try {
+            await message.channel.setName(newName);
+        } catch (e) {}
+
+        const claimEmbed = new EmbedBuilder()
+            .setColor("#ff0000")
+            .setAuthor({ name: message.guild.name, iconURL: message.guild.iconURL() })
+            .setTitle("Ticket Claimed")
+            .setDescription(
+                `**This Ticket Has Been Claimed By:** <@${message.author.id}>\n\n` +
+                `**If You Enter Without Permission From <@${message.author.id}> You Will Be Warned**`
+            )
+            .setFooter({ text: `${message.guild.name} ✨` })
+            .setTimestamp();
+
+        return message.channel.send({ embeds: [claimEmbed] });
     }
 
     const ticketConfig = getTicketTypeByChannel(message.channel);
@@ -196,7 +248,7 @@ client.on('messageCreate', async message => {
         if (!hasStaffRole && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
             return message.reply(`${CONFIG.EMOJIS.ERROR} Only staff members can claim this ticket!`);
         }
-        const newName = `claimed-by-${message.author.username}`;
+        const newName = `by-${message.author.username}`;
         try {
             await message.channel.setName(newName);
             return message.reply(`${CONFIG.EMOJIS.SUCCESS} Ticket claimed by **<@${message.author.id}>**!`);
@@ -237,12 +289,10 @@ client.on('interactionCreate', async interaction => {
                     `• ${CONFIG.EMOJIS.REMPLACEMENT} **${CONFIG.TICKETS.remplacement.label}** : ${CONFIG.TICKETS.remplacement.description} ${CONFIG.EMOJIS.SWORD}\n` +
                     `• ${CONFIG.EMOJIS.DONATE} **${CONFIG.TICKETS.donate.label}** : ${CONFIG.TICKETS.donate.description} ${CONFIG.EMOJIS.SWORD}\n` +
                     `• ${CONFIG.EMOJIS.SPIN} **${CONFIG.TICKETS.spin.label}** : ${CONFIG.TICKETS.spin.description} ${CONFIG.EMOJIS.SWORD}\n` +
-                    `• ${CONFIG.EMOJIS.BUY_ORDER} **${CONFIG.TICKETS.buy_order.label}** : ${CONFIG.TICKETS.buy_order.description} ${CONFIG.EMOJIS.SWORD}\n` +
-                    `• ${CONFIG.EMOJIS.APPLY_SELLER} **${CONFIG.TICKETS.apply_seller.label}** : ${CONFIG.TICKETS.apply_seller.description} ${CONFIG.EMOJIS.SWORD}`
+                    `• ${CONFIG.EMOJIS.BUY_ORDER} **${CONFIG.TICKETS.buy_order.label}** : ${CONFIG.TICKETS.buy_order.description} ${CONFIG.EMOJIS.SWORD}`
                 )
                 .setImage(CONFIG.SERVER_BANNER);
 
-            // بناء الـ Dropdown Menu
             const selectMenu = new StringSelectMenuBuilder()
                 .setCustomId('select_ticket')
                 .setPlaceholder('Select Ticket')
@@ -298,38 +348,6 @@ client.on('interactionCreate', async interaction => {
                 return interaction.editReply({ content: `${CONFIG.EMOJIS.ERROR} تعذر تغيير اسم القناة حالياً بسبب حماية Discord (Rate Limit).` });
             }
         }
-
-        if (interaction.customId === 'modal_apply_seller') {
-            const name = interaction.fields.getTextInputValue('app_name');
-            const age = interaction.fields.getTextInputValue('app_age');
-            const servers = interaction.fields.getTextInputValue('app_servers');
-            const feedback = interaction.fields.getTextInputValue('app_feedback');
-            const ranks = interaction.fields.getTextInputValue('app_ranks');
-
-            const resultEmbed = new EmbedBuilder()
-                .setColor("#2b2d31")
-                .setTitle("📋 New Seller Application Submitted")
-                .addFields(
-                    { name: "ما هو اسمك الحقيقي", value: name },
-                    { name: "ما هو عمرك", value: age },
-                    { name: "ما عدد السيرفرات التي انت شغال فيها", value: servers },
-                    { name: "معاك 10 فيدباك نعم او لا", value: feedback },
-                    { name: "ما هي رتب البيع التي تقدم عليها انت", value: ranks }
-                )
-                .setTimestamp();
-
-            await interaction.channel.send({ content: `**طلب جديد من <@${interaction.user.id}>**`, embeds: [resultEmbed] });
-            await interaction.reply({ content: `${CONFIG.EMOJIS.SUCCESS} تم إرسال طلبك بنجاح!`, ephemeral: true });
-
-            await interaction.channel.send(`+come <@&${CONFIG.TICKETS.apply_seller.roleId}>`);
-
-            const role = interaction.guild.roles.cache.get(CONFIG.TICKETS.apply_seller.roleId);
-            if (role) {
-                role.members.forEach(member => {
-                    member.send(`🔔 **طلب بائع جديد!** هناك تقديم جديد من <@${interaction.user.id}> في الروم: ${interaction.channel}`).catch(() => {});
-                });
-            }
-        }
     }
 
     // Dropdown Selection Handling
@@ -369,28 +387,14 @@ client.on('interactionCreate', async interaction => {
                         `⚜️ **معك طاقم العمل لدى متجرنا في تذكرة الطلب**\n` +
                         `⚜️ **يرجى تحديد طلبك باستخدام الأمر التالي:**\n\n` +
                         `\`\`\`\nneed <product>\nneed <اسم المنتج>\n\`\`\``
-                    );
+                    )
+                    .setImage(CONFIG.ORDER_BANNER); // 👈 زدت ليك البنر هنا فـ Embed Order
 
                 await ticketChannel.send({ 
                     content: `<@&${CONFIG.BUY_ORDER_TAG_ROLE_ID}>`, 
                     embeds: [buyEmbed], 
                     components: [ticketControlRow] 
                 });
-            } 
-            else if (selectedKey === 'apply_seller') {
-                const applyEmbed = new EmbedBuilder()
-                    .setColor("#2b2d31")
-                    .setDescription(
-                        `**Click On The Button To Start Team Apply Submit**\n` +
-                        `برجاء الضغط علي البتن لبدئ التقديم الي طاقم العمل\n\n` +
-                        `⚠️ **ملحوظه : لو مضغطتش علي البتن و كملت مع البوت محدش هيرد عليك**`
-                    );
-
-                const applyBtnRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('btn_click_apply').setLabel('Click Here').setStyle(ButtonStyle.Primary)
-                );
-
-                await ticketChannel.send({ embeds: [applyEmbed], components: [applyBtnRow, ticketControlRow] });
             } 
             else {
                 const embedMsg = new EmbedBuilder()
@@ -402,7 +406,6 @@ client.on('interactionCreate', async interaction => {
                 await ticketChannel.send({ content: `<@${interaction.user.id}>`, embeds: [embedMsg], components: [ticketControlRow] });
             }
 
-            // إرسال الرد بشكل Ephemeral باش ميتأثرش بصلاحيات الكتابة
             return interaction.reply({ content: `${CONFIG.EMOJIS.SUCCESS} Ticket opened: ${ticketChannel}`, ephemeral: true });
         }
     }
@@ -424,29 +427,12 @@ client.on('interactionCreate', async interaction => {
             return interaction.showModal(modal);
         }
 
-        if (interaction.customId === 'btn_click_apply') {
-            const modal = new ModalBuilder().setCustomId('modal_apply_seller').setTitle('Apply Team Submit');
-
-            const input1 = new TextInputBuilder().setCustomId('app_name').setLabel('ما هو اسمك الحقيقي').setStyle(TextInputStyle.Short).setRequired(true);
-            const input2 = new TextInputBuilder().setCustomId('app_age').setLabel('ما هو عمرك').setStyle(TextInputStyle.Short).setRequired(true);
-            const input3 = new TextInputBuilder().setCustomId('app_servers').setLabel('ما عدد السيرفرات التي انت شغال فيها').setStyle(TextInputStyle.Short).setRequired(true);
-            const input4 = new TextInputBuilder().setCustomId('app_feedback').setLabel('معاك 10 فيدباك نعم او لا').setStyle(TextInputStyle.Short).setRequired(true);
-            const input5 = new TextInputBuilder().setCustomId('app_ranks').setLabel('ما هي رتب البيع التي تقدم عليها انت').setStyle(TextInputStyle.Paragraph).setRequired(true);
-
-            modal.addComponents(
-                new ActionRowBuilder().addComponents(input1),
-                new ActionRowBuilder().addComponents(input2),
-                new ActionRowBuilder().addComponents(input3),
-                new ActionRowBuilder().addComponents(input4),
-                new ActionRowBuilder().addComponents(input5)
-            );
-
-            return interaction.showModal(modal);
-        }
-
         if (interaction.customId === 'ticket_close') {
             await interaction.reply({ content: `${CONFIG.EMOJIS.LOCK} Closing ticket in 5 seconds...` });
-            setTimeout(() => interaction.channel.delete().catch(() => {}), 5000);
+            setTimeout(() => {
+                needTracker.delete(interaction.channel.id);
+                interaction.channel.delete().catch(() => {});
+            }, 5000);
             return;
         }
 
@@ -459,7 +445,7 @@ client.on('interactionCreate', async interaction => {
                     return interaction.editReply({ content: `${CONFIG.EMOJIS.ERROR} Only staff members can claim!` });
                 }
             }
-            const newName = `claimed-by-${interaction.user.username}`;
+            const newName = `by-${interaction.user.username}`;
             
             try {
                 await interaction.channel.setName(newName);
