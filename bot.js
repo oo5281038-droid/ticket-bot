@@ -49,8 +49,11 @@ const CONFIG = {
     SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
     ORDER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
 
-    // 👈 رابط الصورة/الخط (Line Banner) تقدر تبدلو من هنا فـ أي وقت
+    // 👈 رابط الصورة/الخط (Line Banner)
     LINE_BANNER: "https://cdn.discordapp.com/attachments/1541542336247631893/1541545506835275837/banner_gif_octopus_studio.gif?ex=6a8dfba1&is=6a8caa21&hm=2331f9c4df94b4c7ae656c9026529d87e048ebbf2b26743efe0e4f33693b7525&",
+
+    // 👈 رابط اللوغو (Logo Banner) حط الرابط المباشر ديال اللوغو هنا
+    SERVER_LOGO: "https://cdn.discordapp.com/attachments/1538901931773141082/1541502242253705326/kling_20260825_VIDEO_hello_need_276_0-ezgif.com-video-to-gif-converter.gif?ex=6a8dd356&is=6a8c81d6&hm=8caad6ed557d185634f404736aaa44b1649d13cdf432b694c17b37eec10f95b2&",
 
     SETUP_CHANNEL_ID: "1538901953331986594", 
     INVITES_REQUIRED: 6, 
@@ -178,7 +181,7 @@ client.on('messageCreate', async message => {
 
     const msgContent = message.content.toLowerCase().trim();
 
-    // 👈 أمر إرسال الخط (Line) يشتغل في أي بلاصة بسيرفر: يخدم بـ line أو !line
+    // 1. أمر الخط: line أو !line
     if (msgContent === 'line' || msgContent === '!line') {
         const lineEmbed = new EmbedBuilder()
             .setColor("#2b2d31")
@@ -187,8 +190,8 @@ client.on('messageCreate', async message => {
         return message.channel.send({ embeds: [lineEmbed] });
     }
 
-    // أمر إرسال البنر الرئيسي: يخدم بـ !banner أو banner
-    if (msgContent === '!banner' || msgContent === 'banner') {
+    // 2. أمر البنر الرئيسي: banner أو !banner
+    if (msgContent === 'banner' || msgContent === '!banner') {
         const bannerEmbed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setImage(CONFIG.ORDER_BANNER);
@@ -196,7 +199,16 @@ client.on('messageCreate', async message => {
         return message.channel.send({ embeds: [bannerEmbed] });
     }
 
-    // 1. نظام الـ Need Counter
+    // 3. أمر اللوغو: logo أو !logo
+    if (msgContent === 'logo' || msgContent === '!logo') {
+        const logoEmbed = new EmbedBuilder()
+            .setColor("#2b2d31")
+            .setImage(CONFIG.SERVER_LOGO);
+            
+        return message.channel.send({ embeds: [logoEmbed] });
+    }
+
+    // نظام الـ Need Counter
     if (message.channel.parentId === CONFIG.TICKETS.buy_order.categoryId) {
         if (msgContent.startsWith('need')) {
             const currentCount = needTracker.get(message.channel.id) || 0;
@@ -218,7 +230,7 @@ client.on('messageCreate', async message => {
         }
     }
 
-    // 2. نظام Claim بـ "*" فالـ Category المحددة
+    // نظام Claim بـ "*" فالـ Category المحددة
     if (message.content.trim() === '*' && message.channel.parentId === CONFIG.CLAIM_CATEGORY_ID) {
         const ticketConfig = getTicketTypeByChannel(message.channel);
         if (ticketConfig) {
@@ -245,6 +257,7 @@ client.on('messageCreate', async message => {
         return message.channel.send({ embeds: [claimEmbed] });
     }
 
+    // الأوامر الخاصة بالـ Tickets فقط ($close, $claim, $rename)
     const ticketConfig = getTicketTypeByChannel(message.channel);
     if (!ticketConfig) return;
 
@@ -454,7 +467,7 @@ client.on('interactionCreate', async interaction => {
             const ticketConfig = getTicketTypeByChannel(interaction.channel);
             if (ticketConfig) {
                 const hasStaffRole = interaction.member.roles.cache.has(ticketConfig.roleId);
-                if (!hasStaffRole && !interaction.member.permissions.has(PermissionFlagsBits.Administrator)) {
+                if (!hasStaffRole && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
                     return interaction.editReply({ content: `${CONFIG.EMOJIS.ERROR} Only staff members can claim!` });
                 }
             }
