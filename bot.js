@@ -47,9 +47,10 @@ const CONFIG = {
     CLAIM_CATEGORY_ID: "1540504775760678952", 
 
     SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
-    
-    // 👈 بدّل هاد الرابط بالبنر الجديدة ديالك فاش تصاوبها
     ORDER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
+
+    // 👈 رابط الصورة/الخط (Line Banner) تقدر تبدلو من هنا فـ أي وقت
+    LINE_BANNER: "https://cdn.discordapp.com/attachments/1541542336247631893/1541545506835275837/banner_gif_octopus_studio.gif?ex=6a8dfba1&is=6a8caa21&hm=2331f9c4df94b4c7ae656c9026529d87e048ebbf2b26743efe0e4f33693b7525&",
 
     SETUP_CHANNEL_ID: "1538901953331986594", 
     INVITES_REQUIRED: 6, 
@@ -175,17 +176,29 @@ client.once('ready', async () => {
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
 
-    // امر سريع لإرسال البنر عند الحاجة
-    if (message.content.toLowerCase() === '!banner') {
+    const msgContent = message.content.toLowerCase().trim();
+
+    // 👈 أمر إرسال الخط (Line) يشتغل في أي بلاصة بسيرفر: يخدم بـ line أو !line
+    if (msgContent === 'line' || msgContent === '!line') {
+        const lineEmbed = new EmbedBuilder()
+            .setColor("#2b2d31")
+            .setImage(CONFIG.LINE_BANNER);
+            
+        return message.channel.send({ embeds: [lineEmbed] });
+    }
+
+    // أمر إرسال البنر الرئيسي: يخدم بـ !banner أو banner
+    if (msgContent === '!banner' || msgContent === 'banner') {
         const bannerEmbed = new EmbedBuilder()
             .setColor("#2b2d31")
             .setImage(CONFIG.ORDER_BANNER);
+            
         return message.channel.send({ embeds: [bannerEmbed] });
     }
 
     // 1. نظام الـ Need Counter
     if (message.channel.parentId === CONFIG.TICKETS.buy_order.categoryId) {
-        if (message.content.toLowerCase().startsWith('need')) {
+        if (msgContent.startsWith('need')) {
             const currentCount = needTracker.get(message.channel.id) || 0;
 
             if (currentCount >= 2) {
@@ -388,7 +401,7 @@ client.on('interactionCreate', async interaction => {
                         `⚜️ **يرجى تحديد طلبك باستخدام الأمر التالي:**\n\n` +
                         `\`\`\`\nneed <product>\nneed <اسم المنتج>\n\`\`\``
                     )
-                    .setImage(CONFIG.ORDER_BANNER); // 👈 زدت ليك البنر هنا فـ Embed Order
+                    .setImage(CONFIG.ORDER_BANNER);
 
                 await ticketChannel.send({ 
                     content: `<@&${CONFIG.BUY_ORDER_TAG_ROLE_ID}>`, 
