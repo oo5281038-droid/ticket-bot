@@ -49,11 +49,11 @@ const CONFIG = {
     // الـ Category المخصصة ميزة الـ Claim برمز *
     CLAIM_CATEGORY_ID: "1540504775760678952", 
 
-    SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
-    ORDER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
+    SERVER_BANNER: "https://imgur.com/a/hFh6MAj", 
+    ORDER_BANNER: "https://imgur.com/a/hFh6MAj", 
 
-    LINE_BANNER: "https://cdn.discordapp.com/attachments/1541542336247631893/1541545506835275837/banner_gif_octopus_studio.gif?ex=6a8dfba1&is=6a8caa21&hm=2331f9c4df94b4c7ae656c9026529d87e048ebbf2b26743efe0e4f33693b7525&",
-    SERVER_LOGO: "https://cdn.discordapp.com/attachments/1538901931773141082/1541502242253705326/kling_20260825_VIDEO_hello_need_276_0-ezgif.com-video-to-gif-converter.gif?ex=6a8dd356&is=6a8c81d6&hm=8caad6ed557d185634f404736aaa44b1649d13cdf432b694c17b37eec10f95b2&",
+    LINE_BANNER: "https://imgur.com/a/vq0XS68",
+    SERVER_LOGO: "https://imgur.com/3NveuEO",
 
     SETUP_CHANNEL_ID: "1538901953331986594", 
     INVITES_REQUIRED: 6, 
