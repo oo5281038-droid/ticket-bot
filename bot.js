@@ -49,11 +49,11 @@ const CONFIG = {
     // الـ Category المخصصة ميزة الـ Claim برمز *
     CLAIM_CATEGORY_ID: "1540504775760678952", 
 
-    SERVER_BANNER: "https://imgur.com/a/hFh6MAj", 
-    ORDER_BANNER: "https://imgur.com/a/hFh6MAj", 
+    SERVER_BANNER: "https://media.discordapp.net/attachments/1538901931773141082/1543029020617351239/kling_20260825_VIDEO_hello_need_276_0-ezgif.com-video-to-gif-converter.gif?ex=6a936142&is=6a920fc2&hm=051fe27af76c41b795546a81f4a68e133a7c36d56202c33e2e5e1ce6c4c259f0&=", 
+    ORDER_BANNER: "https://media.discordapp.net/attachments/1538901931773141082/1543029020617351239/kling_20260825_VIDEO_hello_need_276_0-ezgif.com-video-to-gif-converter.gif?ex=6a936142&is=6a920fc2&hm=051fe27af76c41b795546a81f4a68e133a7c36d56202c33e2e5e1ce6c4c259f0&=", 
 
-    LINE_BANNER: "https://imgur.com/a/vq0XS68",
-    SERVER_LOGO: "https://imgur.com/3NveuEO",
+    LINE_BANNER: "https://cdn.discordapp.com/attachments/1538901931773141082/1543029232454733864/banner_gif_octopus_studio.gif?ex=6a936175&is=6a920ff5&hm=5378cf91aa031137d03ac97ad447f31cb3d268a96388f85ea2fed4a195a9fabb&",
+    SERVER_LOGO: "https://cdn.discordapp.com/attachments/1538901931773141082/1543029049830547578/logo_ocp_discord_png.png?ex=6a936149&is=6a920fc9&hm=05ad068945981d3e936a9a94ebaa0bb2b2243f0dfa6890998a54c5f38189df4a&",
 
     SETUP_CHANNEL_ID: "1538901953331986594", 
     INVITES_REQUIRED: 6, 
