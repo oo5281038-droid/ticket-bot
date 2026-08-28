@@ -43,16 +43,16 @@ const CONFIG = {
     FREE_SPIN_ADMIN_ROLE_ID: "1538910850272722997", 
     BUY_ORDER_TAG_ROLE_ID: "1538901876043554817",
 
+    // 👈 الكاتيجوري الخاصة بالأرشيف للـ Tickets المسدودة (حط الـ ID ديالها هنا)
+    CLOSED_CATEGORY_ID: "1543026472799965314",
+
     // الـ Category المخصصة ميزة الـ Claim برمز *
     CLAIM_CATEGORY_ID: "1540504775760678952", 
 
     SERVER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
     ORDER_BANNER: "https://cdn.discordapp.com/attachments/1315665568228966410/1540122036725350441/octopus_png_banner.png", 
 
-    // 👈 رابط الصورة/الخط (Line Banner)
     LINE_BANNER: "https://cdn.discordapp.com/attachments/1541542336247631893/1541545506835275837/banner_gif_octopus_studio.gif?ex=6a8dfba1&is=6a8caa21&hm=2331f9c4df94b4c7ae656c9026529d87e048ebbf2b26743efe0e4f33693b7525&",
-
-    // 👈 رابط اللوغو (Logo Banner)
     SERVER_LOGO: "https://cdn.discordapp.com/attachments/1538901931773141082/1541502242253705326/kling_20260825_VIDEO_hello_need_276_0-ezgif.com-video-to-gif-converter.gif?ex=6a8dd356&is=6a8c81d6&hm=8caad6ed557d185634f404736aaa44b1649d13cdf432b694c17b37eec10f95b2&",
 
     SETUP_CHANNEL_ID: "1538901953331986594", 
@@ -118,6 +118,39 @@ function saveFreeSpinsData(data) {
 function getTicketTypeByChannel(channel) {
     if (!channel || !channel.parentId) return null;
     return Object.values(CONFIG.TICKETS).find(t => t.categoryId === channel.parentId);
+}
+
+// دالة مخصصة لإغلاق الـ Ticket ونقلها للأرشيف
+async function closeTicket(channel, user) {
+    needTracker.delete(channel.id);
+
+    const closedCategory = channel.guild.channels.cache.get(CONFIG.CLOSED_CATEGORY_ID);
+    
+    // إذا مالقاش الكاتيجوري ديال الإغلاق كيديليتي القناة
+    if (!closedCategory) {
+        return channel.delete().catch(() => {});
+    }
+
+    try {
+        // تغيير اسم القناة وحركتها للـ Category الجديدة
+        await channel.setName(`closed-${channel.name.replace(/^by-/, '')}`);
+        await channel.setParent(closedCategory.id, { lockPermissions: false });
+
+        // سحب صلاحية الكتابة والروية من العضو صاحب التذكرة (إلا إلا كان الأدمن)
+        await channel.permissionOverwrites.set([
+            { id: channel.guild.id, deny: [PermissionFlagsBits.ViewChannel] }
+        ]);
+
+        const closedEmbed = new EmbedBuilder()
+            .setColor("#ff0000")
+            .setTitle("🔒 Ticket Closed")
+            .setDescription(`This ticket was closed by <@${user.id}> and moved to archive.`)
+            .setTimestamp();
+
+        await channel.send({ embeds: [closedEmbed] });
+    } catch (err) {
+        console.error("Error closing ticket:", err);
+    }
 }
 
 function cleanExpiredSpins() {
@@ -262,18 +295,18 @@ client.on('messageCreate', async message => {
 
     // الأوامر الخاصة بالـ Tickets فقط ($close, $claim, $rename)
     const ticketConfig = getTicketTypeByChannel(message.channel);
-    if (!ticketConfig) return;
+    if (!ticketConfig && message.channel.parentId !== CONFIG.CLOSED_CATEGORY_ID) return;
 
     const args = message.content.trim().split(/ +/);
     const command = args.shift().toLowerCase();
 
     if (command === '$close') {
-        await message.reply(`${CONFIG.EMOJIS.LOCK} Closing ticket in 5 seconds...`);
-        setTimeout(() => message.channel.delete().catch(() => {}), 5000);
+        await message.reply(`${CONFIG.EMOJIS.LOCK} Closing ticket and moving to archive...`);
+        setTimeout(() => closeTicket(message.channel, message.author), 3000);
     }
 
     if (command === '$claim') {
-        const hasStaffRole = message.member.roles.cache.has(ticketConfig.roleId);
+        const hasStaffRole = ticketConfig ? message.member.roles.cache.has(ticketConfig.roleId) : false;
         if (!hasStaffRole && !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
             return message.reply(`${CONFIG.EMOJIS.ERROR} Only staff members can claim this ticket!`);
         }
@@ -457,11 +490,10 @@ client.on('interactionCreate', async interaction => {
         }
 
         if (interaction.customId === 'ticket_close') {
-            await interaction.reply({ content: `${CONFIG.EMOJIS.LOCK} Closing ticket in 5 seconds...` });
+            await interaction.reply({ content: `${CONFIG.EMOJIS.LOCK} Closing ticket and moving to archive in 3 seconds...` });
             setTimeout(() => {
-                needTracker.delete(interaction.channel.id);
-                interaction.channel.delete().catch(() => {});
-            }, 5000);
+                closeTicket(interaction.channel, interaction.user);
+            }, 3000);
             return;
         }
 
